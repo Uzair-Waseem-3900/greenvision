@@ -68,7 +68,7 @@ export default function ScanUploader() {
           setDragOver(false);
           handleFiles(e.dataTransfer.files);
         }}
-        className={`relative flex min-h-[420px] flex-col items-center justify-center overflow-hidden rounded-3xl border transition-colors duration-300 ${
+        className={`relative flex min-h-[320px] flex-col items-center justify-center overflow-hidden rounded-3xl border transition-colors duration-300 sm:min-h-[420px] ${
           dragOver
             ? "border-[color:var(--moss)] bg-[color:var(--canopy-3)]/40"
             : "border-[color:var(--line-strong)] bg-[color:var(--canopy-2)]"
@@ -107,7 +107,7 @@ export default function ScanUploader() {
             <img
               src={imageUrl}
               alt="Uploaded tree for analysis"
-              className="h-[420px] w-full object-cover"
+              className="h-[320px] w-full object-cover sm:h-[420px]"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--canopy-0)]/80 via-transparent to-transparent" />
 

@@ -26,7 +26,7 @@ export default function LandingPage() {
     <div>
       {/* Hero */}
       <section className="canopy-field grain relative overflow-hidden border-b border-[color:var(--line)]">
-        <div className="mx-auto grid max-w-6xl gap-12 px-6 py-24 lg:grid-cols-[1.1fr_0.9fr] lg:py-32">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:gap-12 sm:px-6 sm:py-24 lg:grid-cols-[1.1fr_0.9fr] lg:py-32">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -35,17 +35,17 @@ export default function LandingPage() {
             <p className="font-mono text-xs text-[color:var(--moss)]">
               Community park &amp; tree health monitor
             </p>
-            <h1 className="mt-4 font-display text-5xl leading-[1.05] text-[color:var(--mist)] sm:text-6xl">
+            <h1 className="mt-4 font-display text-4xl leading-[1.08] text-[color:var(--mist)] sm:text-5xl lg:text-6xl">
               See what your
               <br />
               trees are telling you.
             </h1>
-            <p className="mt-6 max-w-md text-base leading-relaxed text-[color:var(--mist-dim)]">
+            <p className="mt-5 max-w-md text-[15px] leading-relaxed text-[color:var(--mist-dim)] sm:mt-6 sm:text-base">
               Upload a photo of a tree or plant and GreenVision reads its
               canopy for signs of stress — then tells you what's happening
               and what to do about it.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="mt-7 flex flex-wrap items-center gap-4 sm:mt-8">
               <Link
                 to="/scan"
                 className="group flex items-center gap-2 rounded-full bg-[color:var(--moss)] px-6 py-3 text-sm font-semibold text-[#0b1a10] transition-transform duration-200 hover:scale-[1.03] active:scale-95"
@@ -68,7 +68,7 @@ export default function LandingPage() {
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
             className="relative flex items-center justify-center"
           >
-            <div className="relative flex h-72 w-72 items-center justify-center rounded-full border border-[color:var(--line-strong)] sm:h-80 sm:w-80">
+            <div className="relative flex h-60 w-60 items-center justify-center rounded-full border border-[color:var(--line-strong)] sm:h-80 sm:w-80">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
@@ -78,8 +78,8 @@ export default function LandingPage() {
                     "conic-gradient(from 0deg, transparent 0%, rgba(143,203,110,0.5) 15%, transparent 30%)",
                 }}
               />
-              <div className="flex h-56 w-56 flex-col items-center justify-center rounded-full bg-[color:var(--canopy-1)] text-center sm:h-64 sm:w-64">
-                <span className="font-display text-4xl text-[color:var(--mist)]">
+              <div className="flex h-48 w-48 flex-col items-center justify-center rounded-full bg-[color:var(--canopy-1)] text-center sm:h-64 sm:w-64">
+                <span className="font-display text-3xl text-[color:var(--mist)] sm:text-4xl">
                   {Math.round((dashboardStats.healthy / dashboardStats.treesMonitored) * 100)}%
                 </span>
                 <span className="mt-1 max-w-[140px] text-xs text-[color:var(--mist-dim)]">
@@ -92,7 +92,7 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
+      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
         <div className="mb-10 flex items-end justify-between">
           <h2 className="font-display text-3xl text-[color:var(--mist)]">How it works</h2>
         </div>
@@ -120,7 +120,7 @@ export default function LandingPage() {
 
       {/* Impact strip */}
       <section className="border-y border-[color:var(--line)] bg-[color:var(--canopy-1)]">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 py-14 sm:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-12 sm:grid-cols-4 sm:gap-8 sm:px-6 sm:py-14">
           {[
             [dashboardStats.treesMonitored, "Trees monitored"],
             [dashboardStats.imagesAnalyzed, "Images analyzed"],
