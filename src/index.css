@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+:root {
+  --canopy-0: #08110c;
+  --canopy-1: #0d1a13;
+  --canopy-2: #12241a;
+  --canopy-3: #1a3324;
+  --line: rgba(234, 242, 233, 0.09);
+  --line-strong: rgba(234, 242, 233, 0.16);
+  --mist: #eaf2e9;
+  --mist-dim: #9fb3a6;
+  --moss: #8fcb6e;
+  --moss-deep: #5fa845;
+  --bark: #d3a05f;
+  --amber: #e3a857;
+  --clay: #d16a4a;
+  --sky: #6fb8c9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--canopy-0);
+  color: var(--mist);
+  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+}
+
+.font-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+::selection {
+  background: var(--moss-deep);
+  color: var(--canopy-0);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--canopy-0);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--canopy-3);
+  border-radius: 8px;
+}
+
+/* Focus visibility */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Organic canopy texture used behind hero */
+.canopy-field {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(143, 203, 110, 0.14), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 10%, rgba(111, 184, 201, 0.10), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(95, 168, 69, 0.12), transparent 60%);
+}
+
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ring-scan {
+  background: conic-gradient(from 0deg, var(--moss), var(--sky), var(--moss));
+}
