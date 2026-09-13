@@ -1,8 +1,11 @@
 """
 Application factory. `backend/main.py` just imports `create_app()` from here.
+
+Migrations are NOT run automatically on startup — see
+`backend/scripts/migrate.py` (or `alembic upgrade head` directly) to apply
+them manually before starting the app.
 """
 import logging
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -17,35 +20,10 @@ logger = logging.getLogger(__name__)
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
 
-def _run_migrations() -> None:
-    """
-    Runs `alembic upgrade head` programmatically on startup so tables are
-    always in sync without a manual migration step every time the project
-    is started. Safe to run repeatedly — Alembic no-ops if already current.
-    """
-    from alembic import command
-    from alembic.config import Config
-
-    alembic_cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
-    alembic_cfg.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
-
-    logger.info("Running database migrations...")
-    command.upgrade(alembic_cfg, "head")
-    logger.info("Migrations complete.")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    _run_migrations()
-    yield
-
-
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
         debug=settings.DEBUG,
-        lifespan=lifespan,
     )
 
     app.add_middleware(

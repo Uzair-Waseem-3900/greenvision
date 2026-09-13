@@ -20,6 +20,10 @@ engine = create_async_engine(
     pool_timeout=settings.DB_POOL_TIMEOUT,
     pool_pre_ping=True,
     pool_recycle=1800,
+    # Fail fast instead of hanging indefinitely if the host is unreachable
+    # (e.g. wrong host, or trying to reach an IPv6-only Supabase endpoint
+    # from a network that can't route to it).
+    connect_args={"timeout": 10, "command_timeout": 10},
 )
 
 AsyncSessionLocal = async_sessionmaker(

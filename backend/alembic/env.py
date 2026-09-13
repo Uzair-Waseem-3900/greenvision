@@ -41,6 +41,17 @@ def run_migrations_online() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            # Fail fast on connect instead of hanging if the host is
+            # unreachable (e.g. an IPv6-only endpoint from a network that
+            # can't route to it).
+            "connect_timeout": 10,
+            # Bound how long any single migration statement/lock wait can
+            # run. Without this, a stuck DDL statement (e.g. against a
+            # transaction-mode pgbouncer connection) hangs forever with no
+            # error instead of failing visibly.
+            "options": "-c statement_timeout=30000 -c lock_timeout=10000",
+        },
     )
 
     with connectable.connect() as connection:
