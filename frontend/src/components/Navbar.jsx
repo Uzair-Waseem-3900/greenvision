@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Leaf, Menu, X } from "lucide-react";
+import { Leaf, LogOut, Menu, X } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
-const links = [
+const publicLinks = [{ to: "/", label: "Overview" }];
+
+const privateLinks = [
   { to: "/", label: "Overview" },
+  { to: "/parks", label: "Parks" },
   { to: "/scan", label: "Scan a Tree" },
   { to: "/dashboard", label: "Dashboard" },
 ];
@@ -12,8 +16,17 @@ const links = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const links = user ? privateLinks : publicLinks;
 
   useEffect(() => setOpen(false), [location.pathname]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-[color:var(--line)] bg-[color:var(--canopy-0)]/80 backdrop-blur-md">
@@ -32,6 +45,7 @@ export default function Navbar() {
             <NavLink
               key={l.to}
               to={l.to}
+              end={l.to === "/"}
               className={({ isActive }) =>
                 `rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 ${
                   isActive
@@ -45,12 +59,32 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <NavLink
-          to="/scan"
-          className="hidden rounded-full bg-[color:var(--moss)] px-4 py-2 text-sm font-semibold text-[#0b1a10] transition-transform duration-200 hover:scale-[1.04] active:scale-[0.98] sm:block"
-        >
-          Try the demo
-        </NavLink>
+        {user ? (
+          <div className="hidden items-center gap-3 sm:flex">
+            <span className="text-sm text-[color:var(--mist-dim)]">{user.full_name}</span>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-full border border-[color:var(--line-strong)] px-3.5 py-2 text-sm font-medium text-[color:var(--mist)] transition-colors hover:bg-[color:var(--canopy-2)]"
+            >
+              <LogOut size={14} /> Log out
+            </button>
+          </div>
+        ) : (
+          <div className="hidden items-center gap-2 sm:flex">
+            <NavLink
+              to="/login"
+              className="rounded-full px-4 py-2 text-sm font-medium text-[color:var(--mist-dim)] transition-colors hover:text-[color:var(--mist)]"
+            >
+              Log in
+            </NavLink>
+            <NavLink
+              to="/register"
+              className="rounded-full bg-[color:var(--moss)] px-4 py-2 text-sm font-semibold text-[#0b1a10] transition-transform duration-200 hover:scale-[1.04] active:scale-[0.98]"
+            >
+              Register
+            </NavLink>
+          </div>
+        )}
 
         <button
           onClick={() => setOpen((v) => !v)}
@@ -76,6 +110,7 @@ export default function Navbar() {
                 <NavLink
                   key={l.to}
                   to={l.to}
+                  end={l.to === "/"}
                   className={({ isActive }) =>
                     `rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
                       isActive
@@ -87,12 +122,29 @@ export default function Navbar() {
                   {l.label}
                 </NavLink>
               ))}
-              <NavLink
-                to="/scan"
-                className="mt-1 rounded-xl bg-[color:var(--moss)] px-3 py-2.5 text-center text-sm font-semibold text-[#0b1a10]"
-              >
-                Try the demo
-              </NavLink>
+              {user ? (
+                <button
+                  onClick={handleLogout}
+                  className="mt-1 flex items-center justify-center gap-1.5 rounded-xl border border-[color:var(--line-strong)] px-3 py-2.5 text-sm font-medium text-[color:var(--mist)]"
+                >
+                  <LogOut size={14} /> Log out
+                </button>
+              ) : (
+                <>
+                  <NavLink
+                    to="/login"
+                    className="rounded-xl px-3 py-2.5 text-center text-sm font-medium text-[color:var(--mist-dim)]"
+                  >
+                    Log in
+                  </NavLink>
+                  <NavLink
+                    to="/register"
+                    className="mt-1 rounded-xl bg-[color:var(--moss)] px-3 py-2.5 text-center text-sm font-semibold text-[#0b1a10]"
+                  >
+                    Register
+                  </NavLink>
+                </>
+              )}
             </div>
           </motion.nav>
         )}

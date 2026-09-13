@@ -1,44 +1,65 @@
 import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { UploadCloud, ScanLine, RotateCcw, ImageIcon } from "lucide-react";
-import { analysisOutcomes, statusMeta } from "../data/mockData";
+import { aiApi } from "../lib/api";
+import { getErrorMessage } from "../lib/apiClient";
 import ResultPanel from "./ResultPanel";
 
 const STAGES = [
-  "Reading image",
-  "Detecting canopy & leaf structure",
+  "Uploading image",
+  "Reading canopy & leaf structure",
   "Comparing against species baseline",
   "Scoring stress indicators",
 ];
 
-export default function ScanUploader() {
+const MIN_STAGE_MS = 700; // keeps the animation from flashing by too fast
+
+export default function ScanUploader({ treeId }) {
   const [imageUrl, setImageUrl] = useState(null);
-  const [stage, setStage] = useState(-1); // -1 idle, 0..3 processing, 4 done
+  const [stage, setStage] = useState(-1); // -1 idle, 0..3 processing, 4 done, 5 error
   const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef(null);
 
-  const runAnalysis = useCallback((file) => {
-    const url = URL.createObjectURL(file);
-    setImageUrl(url);
-    setResult(null);
-    setStage(0);
+  const runAnalysis = useCallback(
+    async (file) => {
+      if (!treeId) {
+        setError("Select a tree above before uploading a photo.");
+        return;
+      }
 
-    // Simulated multi-stage AI pipeline — timings are for demo pacing only.
-    const delays = [650, 850, 800, 700];
-    let elapsed = 0;
-    delays.forEach((d, i) => {
-      elapsed += d;
-      setTimeout(() => setStage(i + 1), elapsed);
-    });
+      const url = URL.createObjectURL(file);
+      setImageUrl(url);
+      setResult(null);
+      setError("");
+      setStage(0);
 
-    const total = delays.reduce((a, b) => a + b, 0);
-    setTimeout(() => {
-      const pick = analysisOutcomes[Math.floor(Math.random() * analysisOutcomes.length)];
-      setResult(pick);
-      setStage(4);
-    }, total + 300);
-  }, []);
+      // Advance the visual stages on a timer purely for pacing/feedback —
+      // the real work happens in the API call below, in parallel.
+      const stageTimers = STAGES.slice(1).map((_, i) =>
+        setTimeout(() => setStage((s) => (s < i + 1 ? i + 1 : s)), MIN_STAGE_MS * (i + 1))
+      );
+
+      const startedAt = Date.now();
+
+      try {
+        const res = await aiApi.analyze(treeId, file);
+        const elapsed = Date.now() - startedAt;
+        const remaining = Math.max(0, MIN_STAGE_MS * STAGES.length - elapsed);
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+
+        setResult(res.data);
+        setStage(4);
+      } catch (err) {
+        setError(getErrorMessage(err, "Analysis failed. Please try again."));
+        setStage(5);
+      } finally {
+        stageTimers.forEach(clearTimeout);
+      }
+    },
+    [treeId]
+  );
 
   const handleFiles = (files) => {
     const file = files?.[0];
@@ -50,6 +71,7 @@ export default function ScanUploader() {
     setImageUrl(null);
     setStage(-1);
     setResult(null);
+    setError("");
   };
 
   const isProcessing = stage >= 0 && stage < 4;
@@ -83,8 +105,8 @@ export default function ScanUploader() {
               Upload a photo of a tree or plant
             </h3>
             <p className="mt-2 max-w-xs text-sm text-[color:var(--mist-dim)]">
-              Drag a JPG or PNG here, or choose a file. The demo analyzes it
-              with a simulated AI pipeline.
+              Drag a JPG or PNG here, or choose a file. It'll be sent to the
+              AI pipeline for a live assessment.
             </p>
             <button
               onClick={() => inputRef.current?.click()}
@@ -99,6 +121,7 @@ export default function ScanUploader() {
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
+            {error && <p className="mt-4 text-xs text-[color:var(--clay)]">{error}</p>}
           </div>
         )}
 
@@ -153,20 +176,36 @@ export default function ScanUploader() {
               )}
             </AnimatePresence>
 
-            {stage === 4 && result && (
+            {(stage === 4 || stage === 5) && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)]/90 px-4 py-3 backdrop-blur"
               >
                 <div className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: statusMeta[result.level].color }}
-                  />
-                  <span className="text-sm font-semibold text-[color:var(--mist)]">
-                    {result.status}
-                  </span>
+                  {result && (
+                    <>
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{
+                          background:
+                            result.level === "healthy"
+                              ? "var(--moss)"
+                              : result.level === "mild"
+                              ? "var(--amber)"
+                              : "var(--clay)",
+                        }}
+                      />
+                      <span className="text-sm font-semibold text-[color:var(--mist)]">
+                        {result.status}
+                      </span>
+                    </>
+                  )}
+                  {stage === 5 && (
+                    <span className="text-sm font-semibold text-[color:var(--clay)]">
+                      Analysis failed
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={reset}
@@ -212,7 +251,7 @@ export default function ScanUploader() {
               {[0, 1, 2].map((i) => (
                 <div key={i} className="h-3 w-full overflow-hidden rounded-full bg-[color:var(--canopy-3)]">
                   <motion.div
-                    className="h-full rounded-full bg-[color:var(--canopy-3)]"
+                    className="h-full rounded-full"
                     style={{ background: "var(--moss-deep)" }}
                     initial={{ width: "0%" }}
                     animate={{ width: `${60 + i * 15}%` }}
@@ -231,6 +270,23 @@ export default function ScanUploader() {
               transition={{ duration: 0.45 }}
             >
               <ResultPanel result={result} />
+            </motion.div>
+          )}
+
+          {stage === 5 && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex h-full min-h-[360px] flex-col items-center justify-center text-center"
+            >
+              <p className="text-sm text-[color:var(--clay)]">{error}</p>
+              <button
+                onClick={reset}
+                className="mt-4 rounded-full border border-[color:var(--line-strong)] px-4 py-2 text-xs font-medium text-[color:var(--mist)] hover:bg-[color:var(--canopy-1)]"
+              >
+                Try again
+              </button>
             </motion.div>
           )}
         </AnimatePresence>

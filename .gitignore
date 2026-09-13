@@ -213,3 +213,10 @@ thumb
 sketch
 
 # End of https://www.toptal.com/developers/gitignore/api/react,django
+
+.env*
+*.env
+frontend/.env
+frontend/.env.example
+backend/.env
+backend/.env.example
