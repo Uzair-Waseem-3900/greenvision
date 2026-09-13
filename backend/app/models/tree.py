@@ -12,6 +12,18 @@ class Tree(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "trees"
     __table_args__ = (
         Index("ix_trees_park_id_species", "park_id", "species"),
+        Index(
+            "ix_trees_label_trgm",
+            "label",
+            postgresql_using="gin",
+            postgresql_ops={"label": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_trees_species_trgm",
+            "species",
+            postgresql_using="gin",
+            postgresql_ops={"species": "gin_trgm_ops"},
+        ),
     )
 
     label: Mapped[str] = mapped_column(String(150), nullable=False)  # e.g. "White Oak #114"

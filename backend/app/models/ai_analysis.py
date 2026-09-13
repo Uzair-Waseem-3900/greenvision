@@ -2,7 +2,7 @@ import enum
 import uuid
 
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Integer, JSON, String
+from sqlalchemy import ForeignKey, Index, Integer, JSON, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +17,7 @@ class HealthLevel(str, enum.Enum):
 
 class AIAnalysis(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "ai_analyses"
+    __table_args__ = (Index("ix_ai_analyses_created_at", "created_at"),)
 
     image_url: Mapped[str] = mapped_column(String(600), nullable=False)
     image_path: Mapped[str] = mapped_column(String(400), nullable=False)  # storage object key
