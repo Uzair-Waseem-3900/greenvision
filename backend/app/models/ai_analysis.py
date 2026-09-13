@@ -23,7 +23,13 @@ class AIAnalysis(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     status: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g. "Moderate Stress"
     level: Mapped[HealthLevel] = mapped_column(
-        SAEnum(HealthLevel, name="health_level"), nullable=False, index=True
+        SAEnum(
+            HealthLevel,
+            name="health_level",
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        nullable=False,
+        index=True,
     )
     issue: Mapped[str] = mapped_column(String(200), nullable=False)
     detail: Mapped[str] = mapped_column(String(800), nullable=False)

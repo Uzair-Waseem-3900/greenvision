@@ -33,10 +33,24 @@ class Report(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     action_taken: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     severity: Mapped[HealthLevel] = mapped_column(
-        SAEnum(HealthLevel, name="health_level", create_type=False), nullable=False, index=True
+        SAEnum(
+            HealthLevel,
+            name="health_level",
+            create_type=False,
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        nullable=False,
+        index=True,
     )
     status: Mapped[ReportStatus] = mapped_column(
-        SAEnum(ReportStatus, name="report_status"), default=ReportStatus.OPEN, nullable=False, index=True
+        SAEnum(
+            ReportStatus,
+            name="report_status",
+            values_callable=lambda enum_type: [member.value for member in enum_type],
+        ),
+        default=ReportStatus.OPEN,
+        nullable=False,
+        index=True,
     )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
