@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { TreePine, Images, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 import StatCard from "../components/StatCard";
 import ParkList from "../components/ParkList";
-import RecentScans from "../components/RecentScans";
-import { aiApi, parksApi, treesApi } from "../lib/api";
+import ReportCard from "../components/ReportCard";
+import { aiApi, parksApi, reportsApi, treesApi } from "../lib/api";
 import { getErrorMessage } from "../lib/apiClient";
-
-const LEVEL_TO_STATUS = { healthy: "healthy", mild: "mild", high: "high" };
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
@@ -26,7 +25,7 @@ export default function DashboardPage() {
           aiApi.dashboardSummary(),
           parksApi.list({ page: 1, page_size: 12 }),
           treesApi.list({ page: 1, page_size: 1 }),
-          aiApi.list({ page: 1, page_size: 8 }),
+          reportsApi.list({ sort_by: "created_at", sort_dir: "desc", page: 1, page_size: 5 }),
         ]);
         setSummary(summaryRes.data);
         setParks(parksRes.data.items);
@@ -41,23 +40,13 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  // Parks don't carry an aggregate health status from the API, so derive a
-  // simple display badge per park from majority... kept minimal for now:
-  // default to "healthy" unless we later add a per-park rollup endpoint.
+  // Parks don't carry an aggregate health status from the API, so default
+  // the badge to "healthy" until a per-park rollup endpoint exists.
   const parksForList = parks.map((p) => ({
     id: p.id,
     name: p.name,
     trees: p.tree_count ?? 0,
     status: "healthy",
-  }));
-
-  const scansForTable = recent.map((a) => ({
-    id: a.id,
-    tree: `Tree ${a.tree_id.slice(0, 8)}`,
-    park: "—",
-    status: LEVEL_TO_STATUS[a.level] || "healthy",
-    confidence: a.confidence,
-    time: new Date(a.created_at).toLocaleString(),
   }));
 
   return (
@@ -95,13 +84,31 @@ export default function DashboardPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-6"
             >
-              <h2 className="font-display text-lg text-[color:var(--mist)]">Recent scans</h2>
-              <p className="mb-4 text-xs text-[color:var(--mist-dim)]">
-                Latest {scansForTable.length} AI assessments
-              </p>
-              <RecentScans scans={scansForTable} />
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-display text-lg text-[color:var(--mist)]">Recent scans</h2>
+                <Link to="/reports" className="text-xs font-medium text-[color:var(--moss)] hover:underline">
+                  View all
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {recent.map((report) => (
+                  <ReportCard
+                    key={report.id}
+                    imageUrl={report.image_url}
+                    title={report.title}
+                    severity={report.severity}
+                    status={report.status}
+                    confidence={report.confidence}
+                    treeLabel={report.tree_label}
+                    parkName={report.park_name}
+                    timestamp={new Date(report.created_at).toLocaleString()}
+                  />
+                ))}
+                {recent.length === 0 && (
+                  <p className="text-sm text-[color:var(--mist-dim)]">No scans yet.</p>
+                )}
+              </div>
             </motion.div>
 
             <motion.div

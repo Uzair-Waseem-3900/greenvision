@@ -11,9 +11,9 @@ export default function Footer() {
               <span className="font-display text-base text-[color:var(--mist)]">GreenVision</span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-[color:var(--mist-dim)]">
-              A demo concept for community park &amp; tree health monitoring —
-              built to show what an AI-assisted urban forestry tool could look
-              and feel like.
+              AI-powered tree health monitoring for community parks —
+              upload a photo, get an instant assessment, and track canopy
+              health across your parks over time.
             </p>
           </div>
 
@@ -55,7 +55,7 @@ export default function Footer() {
 
         <div className="mt-10 flex flex-col-reverse items-start justify-between gap-4 border-t border-[color:var(--line)] pt-6 sm:flex-row sm:items-center">
           <p className="font-mono text-xs text-[color:var(--mist-dim)]">
-            Prototype demo — all data shown is sample data, not live sensor readings.
+            Scan results are AI-generated assessments — use your judgment for anything urgent.
           </p>
           <p className="font-mono text-xs text-[color:var(--mist-dim)]">
             © {new Date().getFullYear()} GreenVision

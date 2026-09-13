@@ -1,8 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Plus, Trash2, TreePine, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  ClipboardList,
+  MapPin,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  TreePine,
+  X,
+} from "lucide-react";
 import { parksApi, treesApi } from "../lib/api";
 import { getErrorMessage } from "../lib/apiClient";
+import { useDebouncedValue } from "../lib/useDebouncedValue";
 
 function ParkForm({ onCreated }) {
   const [form, setForm] = useState({ name: "", address: "", description: "" });
@@ -60,6 +71,69 @@ function ParkForm({ onCreated }) {
   );
 }
 
+function ParkEditForm({ park, onSaved, onCancel }) {
+  const [form, setForm] = useState({
+    name: park.name,
+    address: park.address,
+    description: park.description || "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await parksApi.update(park.id, form);
+      onSaved(res.data);
+    } catch (err) {
+      setError(getErrorMessage(err, "Could not save park."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="grid gap-2 rounded-xl bg-[color:var(--canopy-1)] p-3 sm:grid-cols-3">
+      <input
+        required
+        value={form.name}
+        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+        className="rounded-lg border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3 py-2 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
+      />
+      <input
+        required
+        value={form.address}
+        onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+        className="rounded-lg border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3 py-2 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
+      />
+      <div className="flex gap-2">
+        <input
+          value={form.description}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          placeholder="Description"
+          className="w-full rounded-lg border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3 py-2 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
+        />
+        <button
+          disabled={submitting}
+          className="shrink-0 rounded-lg bg-[color:var(--moss)] px-3 py-2 text-xs font-semibold text-[#0b1a10] disabled:opacity-60"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="shrink-0 rounded-lg p-2 text-[color:var(--mist-dim)] hover:text-[color:var(--mist)]"
+        >
+          <X size={15} />
+        </button>
+      </div>
+      {error && <p className="sm:col-span-3 text-xs text-[color:var(--clay)]">{error}</p>}
+    </form>
+  );
+}
+
 function TreeForm({ parkId, onCreated, onCancel }) {
   const [form, setForm] = useState({ label: "", species: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -109,30 +183,78 @@ function TreeForm({ parkId, onCreated, onCancel }) {
   );
 }
 
+function TreeEditForm({ tree, onSaved, onCancel }) {
+  const [form, setForm] = useState({ label: tree.label, species: tree.species || "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await treesApi.update(tree.id, form);
+      onSaved(res.data);
+    } catch (err) {
+      setError(getErrorMessage(err, "Could not save tree."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="flex flex-wrap items-center gap-2 rounded-lg bg-[color:var(--canopy-2)] p-2.5">
+      <input
+        required
+        value={form.label}
+        onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+        className="min-w-[160px] flex-1 rounded-lg border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] px-3 py-1.5 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
+      />
+      <input
+        value={form.species}
+        onChange={(e) => setForm((f) => ({ ...f, species: e.target.value }))}
+        placeholder="Species"
+        className="min-w-[120px] flex-1 rounded-lg border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] px-3 py-1.5 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
+      />
+      <button disabled={submitting} className="rounded-lg bg-[color:var(--moss)] px-3 py-1.5 text-xs font-semibold text-[#0b1a10] disabled:opacity-60">
+        Save
+      </button>
+      <button type="button" onClick={onCancel} className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:text-[color:var(--mist)]">
+        <X size={14} />
+      </button>
+      {error && <p className="w-full text-xs text-[color:var(--clay)]">{error}</p>}
+    </form>
+  );
+}
+
 export default function ParksPage() {
   const [parks, setParks] = useState([]);
   const [treesByPark, setTreesByPark] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [addingTreeFor, setAddingTreeFor] = useState(null);
+  const [editingPark, setEditingPark] = useState(null);
+  const [editingTree, setEditingTree] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebouncedValue(searchInput, 300);
 
-  const loadParks = async () => {
+  const loadParks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await parksApi.list({ page: 1, page_size: 50 });
+      const res = await parksApi.list({ search: search || undefined, page: 1, page_size: 50 });
       setParks(res.data.items);
     } catch (err) {
       setError(getErrorMessage(err, "Could not load parks."));
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
 
   useEffect(() => {
     loadParks();
-  }, []);
+  }, [loadParks]);
 
   const toggleExpand = async (parkId) => {
     if (expanded === parkId) {
@@ -156,6 +278,21 @@ export default function ParksPage() {
     setParks((prev) =>
       prev.map((p) => (p.id === parkId ? { ...p, tree_count: (p.tree_count || 0) + 1 } : p))
     );
+  };
+
+  const handleTreeSaved = (parkId, updatedTree) => {
+    setTreesByPark((prev) => ({
+      ...prev,
+      [parkId]: (prev[parkId] || []).map((t) => (t.id === updatedTree.id ? updatedTree : t)),
+    }));
+    setEditingTree(null);
+  };
+
+  const handleParkSaved = (updatedPark) => {
+    setParks((prev) =>
+      prev.map((p) => (p.id === updatedPark.id ? { ...p, ...updatedPark } : p))
+    );
+    setEditingPark(null);
   };
 
   const handleDeletePark = async (parkId) => {
@@ -199,38 +336,61 @@ export default function ParksPage() {
         <ParkForm onCreated={(p) => setParks((prev) => [{ ...p, tree_count: 0 }, ...prev])} />
       </div>
 
+      <div className="mb-4 flex items-center gap-2 rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5">
+        <Search size={14} className="text-[color:var(--mist-dim)]" />
+        <input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search parks by name or address…"
+          className="w-full bg-transparent text-sm text-[color:var(--mist)] outline-none placeholder:text-[color:var(--mist-dim)]"
+        />
+      </div>
+
       {loading && <p className="text-sm text-[color:var(--mist-dim)]">Loading parks…</p>}
       {error && <p className="text-sm text-[color:var(--clay)]">{error}</p>}
 
       <div className="space-y-3">
         {parks.map((park) => (
           <div key={park.id} className="rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)]">
-            <button
-              onClick={() => toggleExpand(park.id)}
-              className="flex w-full items-center justify-between px-5 py-4 text-left"
-            >
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between px-5 py-4">
+              <button onClick={() => toggleExpand(park.id)} className="flex flex-1 items-center gap-3 text-left">
                 <MapPin size={16} className="text-[color:var(--mist-dim)]" />
                 <div>
                   <p className="text-sm font-medium text-[color:var(--mist)]">{park.name}</p>
                   <p className="text-xs text-[color:var(--mist-dim)]">{park.address}</p>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="font-mono text-xs text-[color:var(--mist-dim)]">
+              </button>
+              <div className="flex items-center gap-1">
+                <span className="mr-2 font-mono text-xs text-[color:var(--mist-dim)]">
                   {park.tree_count ?? 0} trees
                 </span>
+                <Link
+                  to={`/parks/${park.id}/reports`}
+                  title="View all trees' latest scans"
+                  className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-1)] hover:text-[color:var(--moss)]"
+                >
+                  <ClipboardList size={15} />
+                </Link>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeletePark(park.id);
-                  }}
+                  onClick={() => setEditingPark(editingPark === park.id ? null : park.id)}
+                  className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-1)] hover:text-[color:var(--mist)]"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => handleDeletePark(park.id)}
                   className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--clay)]/10 hover:text-[color:var(--clay)]"
                 >
                   <Trash2 size={14} />
                 </button>
               </div>
-            </button>
+            </div>
+
+            {editingPark === park.id && (
+              <div className="px-5 pb-4">
+                <ParkEditForm park={park} onSaved={handleParkSaved} onCancel={() => setEditingPark(null)} />
+              </div>
+            )}
 
             <AnimatePresence>
               {expanded === park.id && (
@@ -241,26 +401,50 @@ export default function ParksPage() {
                   className="overflow-hidden border-t border-[color:var(--line)]"
                 >
                   <div className="space-y-2 p-5">
-                    {(treesByPark[park.id] || []).map((tree) => (
-                      <div
-                        key={tree.id}
-                        className="flex items-center justify-between rounded-xl bg-[color:var(--canopy-1)] px-3.5 py-2.5"
-                      >
-                        <div className="flex items-center gap-2">
-                          <TreePine size={14} className="text-[color:var(--moss)]" />
-                          <span className="text-sm text-[color:var(--mist)]">{tree.label}</span>
-                          {tree.species && (
-                            <span className="text-xs text-[color:var(--mist-dim)]">· {tree.species}</span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleDeleteTree(park.id, tree.id)}
-                          className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--clay)]/10 hover:text-[color:var(--clay)]"
+                    {(treesByPark[park.id] || []).map((tree) =>
+                      editingTree === tree.id ? (
+                        <TreeEditForm
+                          key={tree.id}
+                          tree={tree}
+                          onSaved={(t) => handleTreeSaved(park.id, t)}
+                          onCancel={() => setEditingTree(null)}
+                        />
+                      ) : (
+                        <div
+                          key={tree.id}
+                          className="flex items-center justify-between rounded-xl bg-[color:var(--canopy-1)] px-3.5 py-2.5"
                         >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            <TreePine size={14} className="text-[color:var(--moss)]" />
+                            <span className="text-sm text-[color:var(--mist)]">{tree.label}</span>
+                            {tree.species && (
+                              <span className="text-xs text-[color:var(--mist-dim)]">· {tree.species}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Link
+                              to={`/trees/${tree.id}/reports`}
+                              title="View reports"
+                              className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--moss)]"
+                            >
+                              <ClipboardList size={13} />
+                            </Link>
+                            <button
+                              onClick={() => setEditingTree(tree.id)}
+                              className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--mist)]"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTree(park.id, tree.id)}
+                              className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--clay)]/10 hover:text-[color:var(--clay)]"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    )}
 
                     {(treesByPark[park.id] || []).length === 0 && (
                       <p className="text-xs text-[color:var(--mist-dim)]">No trees added yet.</p>
@@ -288,7 +472,7 @@ export default function ParksPage() {
         ))}
 
         {!loading && parks.length === 0 && (
-          <p className="text-sm text-[color:var(--mist-dim)]">No parks yet — add one above.</p>
+          <p className="text-sm text-[color:var(--mist-dim)]">No parks match your search.</p>
         )}
       </div>
     </div>

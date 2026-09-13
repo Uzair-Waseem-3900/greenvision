@@ -1,51 +1,43 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { FileImage, Info } from "lucide-react";
 import ScanUploader from "../components/ScanUploader";
+import SearchSelect from "../components/SearchSelect";
 import { parksApi, treesApi } from "../lib/api";
-import { getErrorMessage } from "../lib/apiClient";
 
 export default function ScanPage() {
-  const [parks, setParks] = useState([]);
-  const [selectedParkId, setSelectedParkId] = useState("");
-  const [trees, setTrees] = useState([]);
-  const [selectedTreeId, setSelectedTreeId] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const location = useLocation();
+  const [selectedPark, setSelectedPark] = useState(location.state?.presetPark || null);
+  const [selectedTree, setSelectedTree] = useState(location.state?.presetTree || null);
 
-  useEffect(() => {
-    const loadParks = async () => {
-      try {
-        const res = await parksApi.list({ page: 1, page_size: 100 });
-        setParks(res.data.items);
-        if (res.data.items.length > 0) setSelectedParkId(res.data.items[0].id);
-      } catch (err) {
-        setError(getErrorMessage(err, "Could not load parks."));
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadParks();
+  const fetchParks = useCallback(async (query) => {
+    const res = await parksApi.list({ search: query || undefined, page: 1, page_size: 20 });
+    return res.data.items.map((p) => ({ id: p.id, label: p.name, sublabel: p.address }));
   }, []);
 
-  useEffect(() => {
-    if (!selectedParkId) {
-      setTrees([]);
-      setSelectedTreeId("");
-      return;
-    }
-    const loadTrees = async () => {
-      try {
-        const res = await treesApi.list({ park_id: selectedParkId, page: 1, page_size: 100 });
-        setTrees(res.data.items);
-        setSelectedTreeId(res.data.items[0]?.id || "");
-      } catch {
-        setTrees([]);
-        setSelectedTreeId("");
-      }
-    };
-    loadTrees();
-  }, [selectedParkId]);
+  const fetchTrees = useCallback(
+    async (query) => {
+      if (!selectedPark) return [];
+      const res = await treesApi.list({
+        park_id: selectedPark.id,
+        search: query || undefined,
+        page: 1,
+        page_size: 20,
+      });
+      return res.data.items.map((t) => ({
+        id: t.id,
+        label: t.label,
+        sublabel: t.species || undefined,
+      }));
+    },
+    [selectedPark]
+  );
+
+  const handleParkChange = (park) => {
+    setSelectedPark(park);
+    setSelectedTree(null);
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
@@ -60,72 +52,57 @@ export default function ScanPage() {
           Scan a tree
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-[color:var(--mist-dim)]">
-          Choose a park and tree, then upload a photo. It's sent straight to
-          the AI pipeline for a live assessment.
+          Search for the park and tree first — every scan has to be tied to
+          a specific tree so its history stays accurate.
         </p>
       </motion.div>
 
-      {!loading && parks.length === 0 && (
-        <div className="mb-8 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-6 text-sm text-[color:var(--mist-dim)]">
-          You don't have any parks yet.{" "}
-          <Link to="/parks" className="font-medium text-[color:var(--moss)] hover:underline">
-            Add a park and a tree first
-          </Link>{" "}
-          before scanning a photo.
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-[color:var(--mist-dim)]">
+            Park <span className="text-[color:var(--clay)]">*</span>
+          </label>
+          <SearchSelect
+            value={selectedPark}
+            onChange={handleParkChange}
+            fetchOptions={fetchParks}
+            placeholder="Search for a park…"
+            emptyLabel="No parks found — add one on the Parks page"
+          />
         </div>
-      )}
-
-      {error && <p className="mb-6 text-sm text-[color:var(--clay)]">{error}</p>}
-
-      {parks.length > 0 && (
-        <div className="mb-8 grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-[color:var(--mist-dim)]">
-              Park
-            </label>
-            <select
-              value={selectedParkId}
-              onChange={(e) => setSelectedParkId(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
-            >
-              {parks.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-[color:var(--mist-dim)]">
-              Tree
-            </label>
-            <select
-              value={selectedTreeId}
-              onChange={(e) => setSelectedTreeId(e.target.value)}
-              disabled={trees.length === 0}
-              className="w-full rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)] disabled:opacity-50"
-            >
-              {trees.length === 0 && <option>No trees in this park</option>}
-              {trees.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          {trees.length === 0 && selectedParkId && (
-            <p className="sm:col-span-2 text-xs text-[color:var(--mist-dim)]">
-              This park has no trees yet.{" "}
-              <Link to="/parks" className="font-medium text-[color:var(--moss)] hover:underline">
-                Add one
-              </Link>
-              .
-            </p>
-          )}
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-[color:var(--mist-dim)]">
+            Tree <span className="text-[color:var(--clay)]">*</span>
+          </label>
+          <SearchSelect
+            value={selectedTree}
+            onChange={setSelectedTree}
+            fetchOptions={fetchTrees}
+            disabled={!selectedPark}
+            placeholder={selectedPark ? "Search for a tree…" : "Select a park first"}
+            emptyLabel="No trees found in this park"
+          />
         </div>
-      )}
+      </div>
 
-      <ScanUploader treeId={selectedTreeId || null} />
+      <div className="mb-8 flex items-start gap-2.5 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-4">
+        <Info size={15} className="mt-0.5 shrink-0 text-[color:var(--sky)]" />
+        <div className="text-xs leading-relaxed text-[color:var(--mist-dim)]">
+          <p className="flex items-center gap-1.5 font-medium text-[color:var(--mist)]">
+            <FileImage size={13} /> Photos must be .webp
+          </p>
+          <p className="mt-1">
+            For clear, consistent results: take the photo in good daylight,
+            fill the frame with the tree's canopy and leaves, and avoid
+            heavy shadows or blur. If your photo isn't already a .webp file,
+            search "webp converter" online — there are several free tools
+            that convert JPG/PNG to WebP in seconds — then upload the
+            converted file here.
+          </p>
+        </div>
+      </div>
+
+      <ScanUploader treeId={selectedTree?.id || null} />
     </div>
   );
 }

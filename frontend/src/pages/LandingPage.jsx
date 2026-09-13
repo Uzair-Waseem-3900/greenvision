@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Camera, LayoutDashboard, TreePine, ArrowUpRight } from "lucide-react";
 import { dashboardStats } from "../data/mockData";
+import { useAuth } from "../context/AuthContext";
 
 const steps = [
   {
@@ -22,6 +23,13 @@ const steps = [
 ];
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+
+  // Logged-in users land on their dashboard, not the marketing page.
+  if (!loading && user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div>
       {/* Hero */}

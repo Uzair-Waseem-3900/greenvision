@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import { statusMeta } from "../data/mockData";
 
 export default function ParkList({ parks }) {
@@ -14,23 +15,27 @@ export default function ParkList({ parks }) {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.35, delay: i * 0.05 }}
-            className="flex items-center justify-between rounded-xl border border-[color:var(--line)] bg-[color:var(--canopy-1)] px-4 py-3"
           >
-            <div className="flex items-center gap-3">
-              <MapPin size={14} className="text-[color:var(--mist-dim)]" />
-              <div>
-                <p className="text-sm font-medium text-[color:var(--mist)]">{park.name}</p>
-                <p className="font-mono text-xs text-[color:var(--mist-dim)]">
-                  {park.trees} trees monitored
-                </p>
-              </div>
-            </div>
-            <span
-              className="rounded-full px-2.5 py-1 text-xs font-semibold"
-              style={{ background: meta.bg, color: meta.color }}
+            <Link
+              to={`/parks/${park.id}/reports`}
+              className="flex items-center justify-between rounded-xl border border-[color:var(--line)] bg-[color:var(--canopy-1)] px-4 py-3 transition-colors hover:border-[color:var(--line-strong)]"
             >
-              {meta.label}
-            </span>
+              <div className="flex items-center gap-3">
+                <MapPin size={14} className="text-[color:var(--mist-dim)]" />
+                <div>
+                  <p className="text-sm font-medium text-[color:var(--mist)]">{park.name}</p>
+                  <p className="font-mono text-xs text-[color:var(--mist-dim)]">
+                    {park.trees} trees monitored
+                  </p>
+                </div>
+              </div>
+              <span
+                className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                style={{ background: meta.bg, color: meta.color }}
+              >
+                {meta.label}
+              </span>
+            </Link>
           </motion.div>
         );
       })}

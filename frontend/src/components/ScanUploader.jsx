@@ -63,7 +63,11 @@ export default function ScanUploader({ treeId }) {
 
   const handleFiles = (files) => {
     const file = files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    if (file.type !== "image/webp") {
+      setError("Only .webp images are accepted. Convert your photo to WebP first, then upload it here.");
+      return;
+    }
     runAnalysis(file);
   };
 
@@ -105,7 +109,7 @@ export default function ScanUploader({ treeId }) {
               Upload a photo of a tree or plant
             </h3>
             <p className="mt-2 max-w-xs text-sm text-[color:var(--mist-dim)]">
-              Drag a JPG or PNG here, or choose a file. It'll be sent to the
+              Drag a .webp photo here, or choose a file. It'll be sent to the
               AI pipeline for a live assessment.
             </p>
             <button
@@ -117,7 +121,7 @@ export default function ScanUploader({ treeId }) {
             <input
               ref={inputRef}
               type="file"
-              accept="image/*"
+              accept=".webp,image/webp"
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />

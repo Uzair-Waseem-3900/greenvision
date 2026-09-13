@@ -7,6 +7,10 @@ import LandingPage from "./pages/LandingPage";
 import ScanPage from "./pages/ScanPage";
 import DashboardPage from "./pages/DashboardPage";
 import ParksPage from "./pages/ParksPage";
+import ParkTreesReportPage from "./pages/ParkTreesReportPage";
+import TreeReportsPage from "./pages/TreeReportsPage";
+import ReportsPage from "./pages/ReportsPage";
+import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
@@ -23,6 +27,14 @@ function PageFade({ children }) {
   );
 }
 
+function Protected({ children }) {
+  return (
+    <PageFade>
+      <ProtectedRoute>{children}</ProtectedRoute>
+    </PageFade>
+  );
+}
+
 export default function App() {
   const location = useLocation();
 
@@ -35,36 +47,14 @@ export default function App() {
             <Route path="/" element={<PageFade><LandingPage /></PageFade>} />
             <Route path="/login" element={<PageFade><LoginPage /></PageFade>} />
             <Route path="/register" element={<PageFade><RegisterPage /></PageFade>} />
-            <Route
-              path="/parks"
-              element={
-                <PageFade>
-                  <ProtectedRoute>
-                    <ParksPage />
-                  </ProtectedRoute>
-                </PageFade>
-              }
-            />
-            <Route
-              path="/scan"
-              element={
-                <PageFade>
-                  <ProtectedRoute>
-                    <ScanPage />
-                  </ProtectedRoute>
-                </PageFade>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <PageFade>
-                  <ProtectedRoute>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                </PageFade>
-              }
-            />
+
+            <Route path="/parks" element={<Protected><ParksPage /></Protected>} />
+            <Route path="/parks/:parkId/reports" element={<Protected><ParkTreesReportPage /></Protected>} />
+            <Route path="/trees/:treeId/reports" element={<Protected><TreeReportsPage /></Protected>} />
+            <Route path="/scan" element={<Protected><ScanPage /></Protected>} />
+            <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />
+            <Route path="/dashboard" element={<Protected><DashboardPage /></Protected>} />
+            <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
           </Routes>
         </AnimatePresence>
       </main>
