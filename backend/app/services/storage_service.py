@@ -6,19 +6,37 @@ from supabase import create_client, Client
 from app.core.config import settings
 from app.core.exceptions import UpstreamServiceError, ValidationAppError
 
+# WebP files always start with a RIFF header and declare "WEBP" at byte 8.
+# Checking these magic bytes (not just the client-sent Content-Type, which
+# is trivially spoofable) is what makes this a real server-side guarantee.
+_WEBP_RIFF_MAGIC = b"RIFF"
+_WEBP_FORMAT_MAGIC = b"WEBP"
+
 
 @lru_cache
 def get_supabase_client() -> Client:
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 
-def _validate_image(content_type: str, size_bytes: int) -> None:
+def _validate_image(content_type: str, file_bytes: bytes) -> None:
     if content_type not in settings.allowed_image_types_list:
         raise ValidationAppError(
-            f"Unsupported image type '{content_type}'. Allowed: {', '.join(settings.allowed_image_types_list)}"
+            "Only .webp images are accepted. If your photo isn't a .webp "
+            "file yet, search 'webp converter' to convert it first."
         )
+
+    if (
+        len(file_bytes) < 12
+        or file_bytes[0:4] != _WEBP_RIFF_MAGIC
+        or file_bytes[8:12] != _WEBP_FORMAT_MAGIC
+    ):
+        raise ValidationAppError(
+            "This file isn't a valid WebP image (its content doesn't match "
+            "its extension/type). Please re-export it as .webp and try again."
+        )
+
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
-    if size_bytes > max_bytes:
+    if len(file_bytes) > max_bytes:
         raise ValidationAppError(f"Image exceeds the {settings.MAX_UPLOAD_SIZE_MB}MB limit")
 
 
@@ -27,10 +45,9 @@ def upload_tree_photo(file_bytes: bytes, content_type: str, tree_id: uuid.UUID) 
     Uploads a photo to the Supabase Storage bucket and returns
     (object_path, signed_url).
     """
-    _validate_image(content_type, len(file_bytes))
+    _validate_image(content_type, file_bytes)
 
-    extension = content_type.split("/")[-1]
-    object_path = f"trees/{tree_id}/{uuid.uuid4()}.{extension}"
+    object_path = f"trees/{tree_id}/{uuid.uuid4()}.webp"
 
     client = get_supabase_client()
     bucket = client.storage.from_(settings.SUPABASE_STORAGE_BUCKET)
@@ -39,7 +56,7 @@ def upload_tree_photo(file_bytes: bytes, content_type: str, tree_id: uuid.UUID) 
         bucket.upload(
             object_path,
             file_bytes,
-            {"content-type": content_type},
+            {"content-type": "image/webp"},
         )
         signed = bucket.create_signed_url(
             object_path, settings.SUPABASE_SIGNED_URL_EXPIRY_SECONDS

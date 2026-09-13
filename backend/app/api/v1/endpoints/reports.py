@@ -11,7 +11,7 @@ from app.core.exceptions import NotFoundError
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.common import Page, PageParams
-from app.schemas.report import ReportCreate, ReportRead, ReportUpdate
+from app.schemas.report import ReportCreate, ReportRead, ReportUpdate, TreeLatestReportRead
 from app.selectors import report_selector
 from app.services import report_service
 
@@ -36,6 +36,7 @@ async def list_reports(
     has_ai_analysis: bool | None = Query(default=None),
     date_from: datetime | None = Query(default=None),
     date_to: datetime | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=200),
     sort_by: Literal["created_at", "updated_at", "severity", "status"] = Query(default="created_at"),
     sort_dir: Literal["asc", "desc"] = Query(default="desc"),
     page: int = Query(default=1, ge=1),
@@ -55,6 +56,7 @@ async def list_reports(
         has_ai_analysis=has_ai_analysis,
         date_from=date_from,
         date_to=date_to,
+        search=search,
         sort_by=sort_by,
         sort_dir=sort_dir,
     )
@@ -68,6 +70,27 @@ async def status_counts(
     _current_user: User = Depends(get_current_user),
 ):
     return await report_selector.get_status_counts(db, park_id)
+
+
+@router.get("/latest-by-park/{park_id}", response_model=Page[TreeLatestReportRead])
+async def latest_reports_by_park(
+    park_id: uuid.UUID,
+    severity: Literal["healthy", "mild", "high"] | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=200),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=settings.DEFAULT_PAGE_SIZE, ge=1, le=settings.MAX_PAGE_SIZE),
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
+    """
+    One row per tree in the park with its latest scan/report — trees never
+    scanned still appear (report_id null) so the frontend can prompt a scan.
+    """
+    params = PageParams(page=page, page_size=page_size)
+    items, total = await report_selector.list_latest_reports_by_park(
+        db, park_id, params.offset, params.page_size, severity=severity, search=search
+    )
+    return Page.create(items, total, params)
 
 
 @router.get("/{report_id}", response_model=ReportRead)

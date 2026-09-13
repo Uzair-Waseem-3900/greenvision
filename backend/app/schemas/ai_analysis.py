@@ -51,6 +51,7 @@ class AIAnalysisRead(BaseModel):
     reviewed: bool
     tree_id: uuid.UUID
     uploaded_by_id: uuid.UUID | None
+    report_id: uuid.UUID | None = None
     created_at: datetime
 
 

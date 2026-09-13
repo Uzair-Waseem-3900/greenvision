@@ -79,7 +79,7 @@ class Settings(BaseSettings):
 
     # ---- Uploads ----
     MAX_UPLOAD_SIZE_MB: int = 8
-    ALLOWED_IMAGE_CONTENT_TYPES: str = "image/jpeg,image/png,image/webp"
+    ALLOWED_IMAGE_CONTENT_TYPES: str = "image/webp"
 
     @property
     def allowed_image_types_list(self) -> List[str]:

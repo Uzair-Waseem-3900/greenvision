@@ -40,6 +40,35 @@ class ReportRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Enrichment for display — populated by the selector's joined query,
+    # not real columns on the Report model. Optional so ReportRead still
+    # works for contexts that don't need them.
+    tree_label: str | None = None
+    park_id: uuid.UUID | None = None
+    park_name: str | None = None
+    image_url: str | None = None
+    confidence: int | None = None
+
+
+class TreeLatestReportRead(BaseModel):
+    """
+    One row per tree in a park: its latest report (if any) plus the scan
+    image. `report_id` is None for a tree that has never been scanned —
+    the frontend uses that to show a "Scan now" call to action instead.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    tree_id: uuid.UUID
+    tree_label: str
+    tree_species: str | None
+    report_id: uuid.UUID | None
+    title: str | None
+    severity: SeverityLiteral | None
+    status: StatusLiteral | None
+    image_url: str | None
+    confidence: int | None
+    scanned_at: datetime | None
+
 
 class ReportFilters(BaseModel):
     park_id: uuid.UUID | None = None

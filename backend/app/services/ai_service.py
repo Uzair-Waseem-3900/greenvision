@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.tree_health_agent import run_tree_health_agent
 from app.core.exceptions import NotFoundError
 from app.models.ai_analysis import AIAnalysis
+from app.models.report import Report
 from app.schemas.ai_analysis import AIAnalysisUpdate
 from app.selectors import ai_selector, tree_selector
 from app.services import storage_service
@@ -18,6 +19,14 @@ async def analyze_tree_photo(
     content_type: str,
     uploaded_by_id: uuid.UUID,
 ) -> AIAnalysis:
+    """
+    Runs the full scan pipeline for one tree: validates the tree exists,
+    uploads the photo, runs the AI agent, then persists BOTH the raw
+    AIAnalysis (immutable model output) AND a linked Report (the
+    actionable record every "latest scan" / reports view reads from).
+    A tree_id is required by the route itself, so every scan is always
+    unambiguously tied to one tree — there is no "unassigned" scan.
+    """
     tree = await tree_selector.get_by_id(db, tree_id)
     if not tree:
         raise NotFoundError("Tree not found")
@@ -43,8 +52,27 @@ async def analyze_tree_photo(
         uploaded_by_id=uploaded_by_id,
     )
     db.add(analysis)
+    await db.flush()  # assigns analysis.id without committing yet
+
+    report = Report(
+        title=result.issue,
+        notes=result.detail,
+        action_taken=result.action,
+        severity=result.level,
+        tree_id=tree_id,
+        ai_analysis_id=analysis.id,
+        created_by_id=uploaded_by_id,
+    )
+    db.add(report)
+
     await db.commit()
     await db.refresh(analysis)
+
+    # Not a real column — attached only so this response can surface the
+    # linked report's id without a second round trip or a schema change
+    # to the shared AIAnalysisRead model.
+    analysis.report_id = report.id  # type: ignore[attr-defined]
+
     return analysis
 
 

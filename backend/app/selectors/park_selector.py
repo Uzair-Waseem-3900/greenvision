@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.search import search_ilike
 from app.models.park import Park
 from app.models.tree import Tree
 
@@ -27,17 +28,14 @@ async def list_parks(
         func.count(Tree.id).label("tree_count"),
     ).outerjoin(Tree, Tree.park_id == Park.id)
 
-    if search:
-        pattern = f"%{search.lower()}%"
-        base_query = base_query.where(func.lower(Park.name).like(pattern))
+    count_query = select(func.count()).select_from(Park)
+
+    clause = search_ilike(search, Park.name, Park.address)
+    if clause is not None:
+        base_query = base_query.where(clause)
+        count_query = count_query.where(clause)
 
     base_query = base_query.group_by(Park.id)
-
-    count_query = select(func.count()).select_from(Park)
-    if search:
-        pattern = f"%{search.lower()}%"
-        count_query = count_query.where(func.lower(Park.name).like(pattern))
-
     paged_query = base_query.order_by(Park.created_at.desc()).offset(offset).limit(limit)
 
     rows_result = await db.execute(paged_query)

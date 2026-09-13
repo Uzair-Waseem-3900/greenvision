@@ -28,13 +28,14 @@ async def create_tree(
 @router.get("", response_model=Page[TreeWithLatestStatus])
 async def list_trees(
     park_id: uuid.UUID | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=200),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=settings.DEFAULT_PAGE_SIZE, ge=1, le=settings.MAX_PAGE_SIZE),
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
     params = PageParams(page=page, page_size=page_size)
-    rows, total = await tree_selector.list_trees(db, params.offset, params.page_size, park_id)
+    rows, total = await tree_selector.list_trees(db, params.offset, params.page_size, park_id, search)
     items = [
         TreeWithLatestStatus.model_validate(row["tree"], from_attributes=True).model_copy(
             update={

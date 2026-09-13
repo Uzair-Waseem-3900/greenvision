@@ -29,7 +29,7 @@ async def create_report(db: AsyncSession, data: ReportCreate, created_by_id: uui
 
 
 async def update_report(db: AsyncSession, report_id: uuid.UUID, data: ReportUpdate) -> Report:
-    report = await report_selector.get_by_id(db, report_id)
+    report = await report_selector.get_raw_by_id(db, report_id)
     if not report:
         raise NotFoundError("Report not found")
 
@@ -49,7 +49,7 @@ async def update_report(db: AsyncSession, report_id: uuid.UUID, data: ReportUpda
 
 
 async def delete_report(db: AsyncSession, report_id: uuid.UUID) -> None:
-    report = await report_selector.get_by_id(db, report_id)
+    report = await report_selector.get_raw_by_id(db, report_id)
     if not report:
         raise NotFoundError("Report not found")
 

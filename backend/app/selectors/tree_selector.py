@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.search import search_ilike
 from app.models.ai_analysis import AIAnalysis
 from app.models.tree import Tree
 
@@ -47,6 +48,7 @@ async def list_trees(
     offset: int,
     limit: int,
     park_id: uuid.UUID | None = None,
+    search: str | None = None,
 ) -> tuple[list[dict], int]:
     latest = _latest_analysis_subquery()
 
@@ -59,6 +61,11 @@ async def list_trees(
     if park_id:
         query = query.where(Tree.park_id == park_id)
         count_query = count_query.where(Tree.park_id == park_id)
+
+    clause = search_ilike(search, Tree.label, Tree.species)
+    if clause is not None:
+        query = query.where(clause)
+        count_query = count_query.where(clause)
 
     query = query.order_by(Tree.created_at.desc()).offset(offset).limit(limit)
 
