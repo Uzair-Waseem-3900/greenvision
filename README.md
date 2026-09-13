@@ -32,15 +32,26 @@ python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env             # then fill in real values
+
+# Apply migrations manually (required — this is NOT run automatically
+# on startup). Re-run this any time you pull a new migration.
+python scripts/migrate.py
+
 python main.py
 ```
 
-Tables are created/migrated automatically on startup via Alembic — you never
-need to run `alembic upgrade head` manually in normal use. If you change a
-model, generate a new migration yourself:
+**Which Supabase connection string to use for `DATABASE_URL`:** use the
+**Session pooler** (port `5432`), not the Transaction pooler (port `6543`).
+The transaction pooler multiplexes connections mid-transaction and can hang
+indefinitely on schema migrations. Session pooler is still IPv4 (works from
+networks that can't reach Supabase's IPv6-only direct connection) but
+behaves like a normal persistent connection.
+
+If you change a model, generate a new migration, then apply it the same way:
 
 ```bash
 alembic revision --autogenerate -m "describe the change"
+python scripts/migrate.py
 ```
 
 API docs: http://localhost:8000/docs
