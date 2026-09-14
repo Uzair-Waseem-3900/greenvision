@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -15,10 +15,18 @@ import { parksApi, treesApi } from "../lib/api";
 import { getErrorMessage } from "../lib/apiClient";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 
-function ParkForm({ onCreated }) {
+function ParkFormModal({ onCreated, onClose }) {
   const [form, setForm] = useState({ name: "", address: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const firstInputRef = useRef(null);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    firstInputRef.current?.focus();
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -27,7 +35,6 @@ function ParkForm({ onCreated }) {
     try {
       const res = await parksApi.create(form);
       onCreated(res.data);
-      setForm({ name: "", address: "", description: "" });
     } catch (err) {
       setError(getErrorMessage(err, "Could not create park."));
     } finally {
@@ -36,38 +43,99 @@ function ParkForm({ onCreated }) {
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-3">
-      <input
-        required
-        placeholder="Park name"
-        value={form.name}
-        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-        className="rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
-      />
-      <input
-        required
-        placeholder="Address"
-        value={form.address}
-        onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-        className="rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
-      />
-      <div className="flex gap-2">
-        <input
-          placeholder="Description (optional)"
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          className="w-full rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none focus:border-[color:var(--moss)]"
-        />
-        <button
-          disabled={submitting}
-          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[color:var(--moss)] px-4 py-2.5 text-sm font-semibold text-[#0b1a10] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-60"
-        >
-          <Plus size={15} />
-          Add
-        </button>
-      </div>
-      {error && <p className="sm:col-span-3 text-xs text-[color:var(--clay)]">{error}</p>}
-    </form>
+    // Backdrop
+    <motion.div
+      key="park-modal-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(6, 14, 8, 0.72)", backdropFilter: "blur(6px)" }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Panel */}
+      <motion.div
+        key="park-modal-panel"
+        initial={{ opacity: 0, y: 32, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 24, scale: 0.97 }}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-lg rounded-2xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] p-6 shadow-2xl"
+      >
+        {/* Header */}
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="font-mono text-xs text-[color:var(--moss)]">New park</p>
+            <h2 className="mt-1 font-display text-2xl text-[color:var(--mist)]">Add a park</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-0.5 rounded-lg p-1.5 text-[color:var(--mist-dim)] transition-colors hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--mist)]"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[color:var(--mist-dim)]">
+              Park name <span className="text-[color:var(--clay)]">*</span>
+            </label>
+            <input
+              ref={firstInputRef}
+              required
+              placeholder="e.g. Riverside Park"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none transition-colors focus:border-[color:var(--moss)]"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[color:var(--mist-dim)]">
+              Address <span className="text-[color:var(--clay)]">*</span>
+            </label>
+            <input
+              required
+              placeholder="e.g. 123 Green St, Springfield"
+              value={form.address}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              className="rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none transition-colors focus:border-[color:var(--moss)]"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-[color:var(--mist-dim)]">Description</label>
+            <input
+              placeholder="Optional notes about this park"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              className="rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none transition-colors focus:border-[color:var(--moss)]"
+            />
+          </div>
+
+          {error && <p className="text-xs text-[color:var(--clay)]">{error}</p>}
+
+          <div className="mt-1 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-4 py-2.5 text-sm font-medium text-[color:var(--mist-dim)] transition-colors hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--mist)]"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={submitting}
+              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--moss)] px-5 py-2.5 text-sm font-semibold text-[#0b1a10] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-60"
+            >
+              <Plus size={15} />
+              {submitting ? "Adding…" : "Add park"}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -345,42 +413,23 @@ export default function ParksPage() {
         <p className="text-sm text-[color:var(--mist-dim)]">Manage the parks in your community.</p>
         <button
           type="button"
-          onClick={() => setShowParkForm((visible) => !visible)}
+          onClick={() => setShowParkForm(true)}
           className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[color:var(--moss)] px-4 py-2.5 text-sm font-semibold text-[#0b1a10] transition-transform hover:scale-[1.03] active:scale-95"
         >
-          <motion.span
-            animate={{ rotate: showParkForm ? 45 : 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="flex"
-          >
-            <Plus size={15} />
-          </motion.span>
-          {showParkForm ? "Close" : "Add park"}
+          <Plus size={15} />
+          Add park
         </button>
       </div>
 
-      <AnimatePresence initial={false}>
+      <AnimatePresence>
         {showParkForm && (
-          <motion.div
-            key="park-form"
-            initial={{ opacity: 0, scaleY: 0.92, y: -6 }}
-            animate={{ opacity: 1, scaleY: 1, y: 0 }}
-            exit={{ opacity: 0, scaleY: 0.92, y: -6 }}
-            transition={{
-              duration: 0.28,
-              ease: [0.22, 1, 0.36, 1],
+          <ParkFormModal
+            onCreated={(p) => {
+              setParks((prev) => [{ ...p, tree_count: 0 }, ...prev]);
+              setShowParkForm(false);
             }}
-            style={{ transformOrigin: "top" }}
-            className="mb-8 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-5 will-change-transform"
-          >
-            <h2 className="mb-3 font-display text-lg text-[color:var(--mist)]">Add a park</h2>
-            <ParkForm
-              onCreated={(p) => {
-                setParks((prev) => [{ ...p, tree_count: 0 }, ...prev]);
-                setShowParkForm(false);
-              }}
-            />
-          </motion.div>
+            onClose={() => setShowParkForm(false)}
+          />
         )}
       </AnimatePresence>
 
