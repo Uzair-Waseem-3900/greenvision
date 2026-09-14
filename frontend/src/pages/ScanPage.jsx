@@ -85,13 +85,15 @@ export default function ScanPage() {
         </div>
       </div>
 
-      <div className="mb-8 flex items-start gap-2.5 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-4">
-        <Info size={15} className="mt-0.5 shrink-0 text-[color:var(--sky)]" />
-        <div className="text-xs leading-relaxed text-[color:var(--mist-dim)]">
-          <p className="flex items-center gap-1.5 font-medium text-[color:var(--mist)]">
-            <FileImage size={13} /> Photos must be .webp
+      <ScanUploader treeId={selectedTree?.id || null} />
+
+      <div className="mt-8 flex items-start gap-3 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-5">
+        <Info size={17} className="mt-0.5 shrink-0 text-[color:var(--sky)]" />
+        <div className="text-sm leading-relaxed text-[color:var(--mist-dim)]">
+          <p className="flex items-center gap-1.5 text-base font-medium text-[color:var(--mist)]">
+            <FileImage size={15} /> Photos must be .webp
           </p>
-          <p className="mt-1">
+          <p className="mt-2">
             For clear, consistent results: take the photo in good daylight,
             fill the frame with the tree's canopy and leaves, and avoid
             heavy shadows or blur. If your photo isn't already a .webp file,
@@ -101,8 +103,6 @@ export default function ScanPage() {
           </p>
         </div>
       </div>
-
-      <ScanUploader treeId={selectedTree?.id || null} />
     </div>
   );
 }
