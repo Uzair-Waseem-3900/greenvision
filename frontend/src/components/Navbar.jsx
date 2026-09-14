@@ -5,10 +5,10 @@ import { ChevronDown, Leaf, LogOut, Menu, User as UserIcon, X } from "lucide-rea
 import { useAuth } from "../context/AuthContext";
 
 const privateLinks = [
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/parks", label: "Parks" },
   { to: "/scan", label: "Scan a Tree" },
   { to: "/reports", label: "Reports" },
-  { to: "/dashboard", label: "Dashboard" },
 ];
 
 function ProfileMenu({ user, onLogout }) {
