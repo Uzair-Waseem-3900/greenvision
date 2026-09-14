@@ -233,6 +233,7 @@ export default function ParksPage() {
   const [treesLoadingByPark, setTreesLoadingByPark] = useState({});
   const [treeErrorsByPark, setTreeErrorsByPark] = useState({});
   const [expanded, setExpanded] = useState(null);
+  const [showParkForm, setShowParkForm] = useState(false);
   const [addingTreeFor, setAddingTreeFor] = useState(null);
   const [editingPark, setEditingPark] = useState(null);
   const [editingTree, setEditingTree] = useState(null);
@@ -340,10 +341,47 @@ export default function ParksPage() {
         </p>
       </motion.div>
 
-      <div className="mb-8 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-5">
-        <h2 className="mb-3 font-display text-lg text-[color:var(--mist)]">Add a park</h2>
-        <ParkForm onCreated={(p) => setParks((prev) => [{ ...p, tree_count: 0 }, ...prev])} />
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <p className="text-sm text-[color:var(--mist-dim)]">Manage the parks in your community.</p>
+        <button
+          type="button"
+          onClick={() => setShowParkForm((visible) => !visible)}
+          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[color:var(--moss)] px-4 py-2.5 text-sm font-semibold text-[#0b1a10] transition-transform hover:scale-[1.03] active:scale-95"
+        >
+          <motion.span
+            animate={{ rotate: showParkForm ? 45 : 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="flex"
+          >
+            <Plus size={15} />
+          </motion.span>
+          {showParkForm ? "Close" : "Add park"}
+        </button>
       </div>
+
+      <AnimatePresence>
+        {showParkForm && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -8 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -8 }}
+            transition={{
+              height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+              opacity: { duration: 0.2, ease: "easeOut" },
+              y: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+            }}
+            className="mb-8 overflow-hidden rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-5 will-change-[height,opacity,transform]"
+          >
+            <h2 className="mb-3 font-display text-lg text-[color:var(--mist)]">Add a park</h2>
+            <ParkForm
+              onCreated={(p) => {
+                setParks((prev) => [{ ...p, tree_count: 0 }, ...prev]);
+                setShowParkForm(false);
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="mb-4 flex items-center gap-2 rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5">
         <Search size={14} className="text-[color:var(--mist-dim)]" />
