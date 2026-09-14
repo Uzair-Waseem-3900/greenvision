@@ -4,6 +4,7 @@ import { UploadCloud, ScanLine, RotateCcw, ImageIcon } from "lucide-react";
 import { aiApi } from "../lib/api";
 import { getErrorMessage } from "../lib/apiClient";
 import ResultPanel from "./ResultPanel";
+import { useToast } from "../context/ToastContext";
 
 const STAGES = [
   "Uploading image",
@@ -15,6 +16,7 @@ const STAGES = [
 const MIN_STAGE_MS = 700; // keeps the animation from flashing by too fast
 
 export default function ScanUploader({ treeId, disabled = false, disabledReason = "" }) {
+  const toast = useToast();
   const [imageUrl, setImageUrl] = useState(null);
   const [stage, setStage] = useState(-1); // -1 idle, 0..3 processing, 4 done, 5 error
   const [result, setResult] = useState(null);
@@ -34,6 +36,7 @@ export default function ScanUploader({ treeId, disabled = false, disabledReason 
       setResult(null);
       setError("");
       setStage(0);
+      toast.info("Scan started", "Analysing your photo — this takes a few seconds.");
 
       // Advance the visual stages on a timer purely for pacing/feedback —
       // the real work happens in the API call below, in parallel.
@@ -51,9 +54,18 @@ export default function ScanUploader({ treeId, disabled = false, disabledReason 
 
         setResult(res.data);
         setStage(4);
+        const level = res.data?.level;
+        const toastType = level === "healthy" ? "success" : level === "mild" ? "warning" : "error";
+        toast[toastType](
+          "Scan complete",
+          res.data?.status || "Assessment ready — see results panel.",
+          6000
+        );
       } catch (err) {
-        setError(getErrorMessage(err, "Analysis failed. Please try again."));
+        const msg = getErrorMessage(err, "Analysis failed. Please try again.");
+        setError(msg);
         setStage(5);
+        toast.error("Scan failed", msg);
       } finally {
         stageTimers.forEach(clearTimeout);
       }

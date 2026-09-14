@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { ToastProvider } from "./context/ToastContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -39,6 +40,7 @@ export default function App() {
   const location = useLocation();
 
   return (
+    <ToastProvider>
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
@@ -60,5 +62,6 @@ export default function App() {
       </main>
       <Footer />
     </div>
+    </ToastProvider>
   );
 }

@@ -14,14 +14,18 @@ import {
 import { parksApi, treesApi } from "../lib/api";
 import { getErrorMessage } from "../lib/apiClient";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
+import { useToast } from "../context/ToastContext";
+import ConfirmDialog from "../components/ConfirmDialog";
 
+// ---------------------------------------------------------------------------
+// Add Park Modal
+// ---------------------------------------------------------------------------
 function ParkFormModal({ onCreated, onClose }) {
   const [form, setForm] = useState({ name: "", address: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const firstInputRef = useRef(null);
 
-  // Lock body scroll while open
   useEffect(() => {
     document.body.style.overflow = "hidden";
     firstInputRef.current?.focus();
@@ -43,7 +47,6 @@ function ParkFormModal({ onCreated, onClose }) {
   };
 
   return (
-    // Backdrop
     <motion.div
       key="park-modal-backdrop"
       initial={{ opacity: 0 }}
@@ -54,7 +57,6 @@ function ParkFormModal({ onCreated, onClose }) {
       style={{ background: "rgba(6, 14, 8, 0.72)", backdropFilter: "blur(6px)" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Panel */}
       <motion.div
         key="park-modal-panel"
         initial={{ opacity: 0, y: 32, scale: 0.97 }}
@@ -63,7 +65,6 @@ function ParkFormModal({ onCreated, onClose }) {
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         className="relative w-full max-w-lg rounded-2xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] p-6 shadow-2xl"
       >
-        {/* Header */}
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <p className="font-mono text-xs text-[color:var(--moss)]">New park</p>
@@ -78,7 +79,6 @@ function ParkFormModal({ onCreated, onClose }) {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={submit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-[color:var(--mist-dim)]">
@@ -139,6 +139,9 @@ function ParkFormModal({ onCreated, onClose }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Park edit form (inline)
+// ---------------------------------------------------------------------------
 function ParkEditForm({ park, onSaved, onCancel }) {
   const [form, setForm] = useState({
     name: park.name,
@@ -202,6 +205,9 @@ function ParkEditForm({ park, onSaved, onCancel }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tree add form (inline)
+// ---------------------------------------------------------------------------
 function TreeForm({ parkId, onCreated, onCancel }) {
   const [form, setForm] = useState({ label: "", species: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -251,6 +257,9 @@ function TreeForm({ parkId, onCreated, onCancel }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tree edit form (inline)
+// ---------------------------------------------------------------------------
 function TreeEditForm({ tree, onSaved, onCancel }) {
   const [form, setForm] = useState({ label: tree.label, species: tree.species || "" });
   const [submitting, setSubmitting] = useState(false);
@@ -295,7 +304,12 @@ function TreeEditForm({ tree, onSaved, onCancel }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 export default function ParksPage() {
+  const toast = useToast();
+
   const [parks, setParks] = useState([]);
   const [treesByPark, setTreesByPark] = useState({});
   const [treesLoadingByPark, setTreesLoadingByPark] = useState({});
@@ -310,6 +324,9 @@ export default function ParksPage() {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 300);
 
+  // Confirm dialog state
+  const [confirm, setConfirm] = useState(null); // { title, description, onConfirm }
+
   const loadParks = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -323,39 +340,62 @@ export default function ParksPage() {
     }
   }, [search]);
 
-  useEffect(() => {
-    loadParks();
-  }, [loadParks]);
+  useEffect(() => { loadParks(); }, [loadParks]);
 
   const toggleExpand = async (parkId) => {
-    if (expanded === parkId) {
-      setExpanded(null);
-      return;
-    }
+    if (expanded === parkId) { setExpanded(null); return; }
     setExpanded(parkId);
     if (!treesByPark[parkId]) {
-      setTreesLoadingByPark((prev) => ({ ...prev, [parkId]: true }));
-      setTreeErrorsByPark((prev) => ({ ...prev, [parkId]: "" }));
+      setTreesLoadingByPark((p) => ({ ...p, [parkId]: true }));
+      setTreeErrorsByPark((p) => ({ ...p, [parkId]: "" }));
       try {
         const res = await treesApi.list({ park_id: parkId, page: 1, page_size: 50 });
-        setTreesByPark((prev) => ({ ...prev, [parkId]: res.data.items }));
+        setTreesByPark((p) => ({ ...p, [parkId]: res.data.items }));
       } catch (err) {
-        setTreeErrorsByPark((prev) => ({
-          ...prev,
-          [parkId]: getErrorMessage(err, "Could not load this park's trees."),
-        }));
+        setTreeErrorsByPark((p) => ({ ...p, [parkId]: getErrorMessage(err, "Could not load trees.") }));
       } finally {
-        setTreesLoadingByPark((prev) => ({ ...prev, [parkId]: false }));
+        setTreesLoadingByPark((p) => ({ ...p, [parkId]: false }));
       }
     }
+  };
+
+  // ── CRUD handlers ──────────────────────────────────────────────────────────
+
+  const handleParkCreated = (p) => {
+    setParks((prev) => [{ ...p, tree_count: 0 }, ...prev]);
+    setShowParkForm(false);
+    toast.success("Park added", `"${p.name}" is now in your list.`);
+  };
+
+  const handleParkSaved = (updatedPark) => {
+    setParks((prev) => prev.map((p) => (p.id === updatedPark.id ? { ...p, ...updatedPark } : p)));
+    setEditingPark(null);
+    toast.success("Park updated", `"${updatedPark.name}" has been saved.`);
+  };
+
+  const handleDeletePark = (park) => {
+    setConfirm({
+      title: "Delete park?",
+      description: `"${park.name}" and all its trees will be permanently removed. This cannot be undone.`,
+      confirmLabel: "Delete park",
+      onConfirm: async () => {
+        setConfirm(null);
+        try {
+          await parksApi.remove(park.id);
+          setParks((prev) => prev.filter((p) => p.id !== park.id));
+          toast.success("Park deleted", `"${park.name}" has been removed.`);
+        } catch (err) {
+          toast.error("Delete failed", getErrorMessage(err, "Could not delete park."));
+        }
+      },
+    });
   };
 
   const handleTreeCreated = (parkId, tree) => {
     setTreesByPark((prev) => ({ ...prev, [parkId]: [tree, ...(prev[parkId] || [])] }));
     setAddingTreeFor(null);
-    setParks((prev) =>
-      prev.map((p) => (p.id === parkId ? { ...p, tree_count: (p.tree_count || 0) + 1 } : p))
-    );
+    setParks((prev) => prev.map((p) => (p.id === parkId ? { ...p, tree_count: (p.tree_count || 0) + 1 } : p)));
+    toast.success("Tree added", `"${tree.label}" has been registered.`);
   };
 
   const handleTreeSaved = (parkId, updatedTree) => {
@@ -364,43 +404,43 @@ export default function ParksPage() {
       [parkId]: (prev[parkId] || []).map((t) => (t.id === updatedTree.id ? updatedTree : t)),
     }));
     setEditingTree(null);
+    toast.success("Tree updated", `"${updatedTree.label}" has been saved.`);
   };
 
-  const handleParkSaved = (updatedPark) => {
-    setParks((prev) =>
-      prev.map((p) => (p.id === updatedPark.id ? { ...p, ...updatedPark } : p))
-    );
-    setEditingPark(null);
+  const handleDeleteTree = (parkId, tree) => {
+    setConfirm({
+      title: "Delete tree?",
+      description: `"${tree.label}" and its entire scan history will be permanently removed.`,
+      confirmLabel: "Delete tree",
+      onConfirm: async () => {
+        setConfirm(null);
+        try {
+          await treesApi.remove(tree.id);
+          setTreesByPark((prev) => ({ ...prev, [parkId]: prev[parkId].filter((t) => t.id !== tree.id) }));
+          setParks((prev) => prev.map((p) => (p.id === parkId ? { ...p, tree_count: Math.max(0, (p.tree_count || 1) - 1) } : p)));
+          toast.success("Tree deleted", `"${tree.label}" has been removed.`);
+        } catch (err) {
+          toast.error("Delete failed", getErrorMessage(err, "Could not delete tree."));
+        }
+      },
+    });
   };
 
-  const handleDeletePark = async (parkId) => {
-    if (!confirm("Delete this park and all its trees?")) return;
-    try {
-      await parksApi.remove(parkId);
-      setParks((prev) => prev.filter((p) => p.id !== parkId));
-    } catch (err) {
-      alert(getErrorMessage(err, "Could not delete park."));
-    }
-  };
-
-  const handleDeleteTree = async (parkId, treeId) => {
-    if (!confirm("Delete this tree and its history?")) return;
-    try {
-      await treesApi.remove(treeId);
-      setTreesByPark((prev) => ({
-        ...prev,
-        [parkId]: prev[parkId].filter((t) => t.id !== treeId),
-      }));
-      setParks((prev) =>
-        prev.map((p) => (p.id === parkId ? { ...p, tree_count: Math.max(0, (p.tree_count || 1) - 1) } : p))
-      );
-    } catch (err) {
-      alert(getErrorMessage(err, "Could not delete tree."));
-    }
-  };
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+
+      {/* Confirm dialog */}
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        description={confirm?.description}
+        confirmLabel={confirm?.confirmLabel}
+        onConfirm={confirm?.onConfirm}
+        onCancel={() => setConfirm(null)}
+      />
+
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
         <p className="font-mono text-xs text-[color:var(--moss)]">Manage</p>
         <h1 className="mt-2 font-display text-4xl text-[color:var(--mist)]">Parks &amp; trees</h1>
@@ -424,10 +464,7 @@ export default function ParksPage() {
       <AnimatePresence>
         {showParkForm && (
           <ParkFormModal
-            onCreated={(p) => {
-              setParks((prev) => [{ ...p, tree_count: 0 }, ...prev]);
-              setShowParkForm(false);
-            }}
+            onCreated={handleParkCreated}
             onClose={() => setShowParkForm(false)}
           />
         )}
@@ -475,7 +512,7 @@ export default function ParksPage() {
                   <Pencil size={14} />
                 </button>
                 <button
-                  onClick={() => handleDeletePark(park.id)}
+                  onClick={() => handleDeletePark(park)}
                   className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--clay)]/10 hover:text-[color:var(--clay)]"
                 >
                   <Trash2 size={14} />
@@ -501,60 +538,59 @@ export default function ParksPage() {
                     {treesLoadingByPark[park.id] && (
                       <p className="text-xs text-[color:var(--mist-dim)]">Loading trees…</p>
                     )}
-
                     {treeErrorsByPark[park.id] && (
                       <p className="text-xs text-[color:var(--clay)]">{treeErrorsByPark[park.id]}</p>
                     )}
 
                     {!treesLoadingByPark[park.id] && !treeErrorsByPark[park.id] &&
                       (treesByPark[park.id] || []).map((tree) =>
-                      editingTree === tree.id ? (
-                        <TreeEditForm
-                          key={tree.id}
-                          tree={tree}
-                          onSaved={(t) => handleTreeSaved(park.id, t)}
-                          onCancel={() => setEditingTree(null)}
-                        />
-                      ) : (
-                        <div
-                          key={tree.id}
-                          className="flex items-center justify-between rounded-xl bg-[color:var(--canopy-1)] px-3.5 py-2.5"
-                        >
-                          <div className="flex items-center gap-2">
-                            <TreePine size={14} className="text-[color:var(--moss)]" />
-                            <span className="text-sm text-[color:var(--mist)]">{tree.label}</span>
-                            {tree.species && (
-                              <span className="text-xs text-[color:var(--mist-dim)]">· {tree.species}</span>
-                            )}
+                        editingTree === tree.id ? (
+                          <TreeEditForm
+                            key={tree.id}
+                            tree={tree}
+                            onSaved={(t) => handleTreeSaved(park.id, t)}
+                            onCancel={() => setEditingTree(null)}
+                          />
+                        ) : (
+                          <div
+                            key={tree.id}
+                            className="flex items-center justify-between rounded-xl bg-[color:var(--canopy-1)] px-3.5 py-2.5"
+                          >
+                            <div className="flex items-center gap-2">
+                              <TreePine size={14} className="text-[color:var(--moss)]" />
+                              <span className="text-sm text-[color:var(--mist)]">{tree.label}</span>
+                              {tree.species && (
+                                <span className="text-xs text-[color:var(--mist-dim)]">· {tree.species}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Link
+                                to={`/trees/${tree.id}/reports`}
+                                title="View reports"
+                                className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--moss)]"
+                              >
+                                <ClipboardList size={13} />
+                              </Link>
+                              <button
+                                onClick={() => setEditingTree(tree.id)}
+                                className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--mist)]"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTree(park.id, tree)}
+                                className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--clay)]/10 hover:text-[color:var(--clay)]"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Link
-                              to={`/trees/${tree.id}/reports`}
-                              title="View reports"
-                              className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--moss)]"
-                            >
-                              <ClipboardList size={13} />
-                            </Link>
-                            <button
-                              onClick={() => setEditingTree(tree.id)}
-                              className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--canopy-2)] hover:text-[color:var(--mist)]"
-                            >
-                              <Pencil size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTree(park.id, tree.id)}
-                              className="rounded-lg p-1.5 text-[color:var(--mist-dim)] hover:bg-[color:var(--clay)]/10 hover:text-[color:var(--clay)]"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      )
+                        )
                       )}
 
                     {!treesLoadingByPark[park.id] && !treeErrorsByPark[park.id] &&
-                      treesByPark[park.id] && treesByPark[park.id].length === 0 && (
-                      <p className="text-xs text-[color:var(--mist-dim)]">No trees added yet.</p>
+                      treesByPark[park.id]?.length === 0 && (
+                        <p className="text-xs text-[color:var(--mist-dim)]">No trees added yet.</p>
                     )}
 
                     {addingTreeFor === park.id ? (
