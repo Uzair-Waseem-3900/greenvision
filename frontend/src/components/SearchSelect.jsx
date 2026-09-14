@@ -1,14 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, Loader2, Search, X } from "lucide-react";
+import { Check, Loader2, Search, X } from "lucide-react";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 
-/**
- * A combobox backed by a server-side search endpoint instead of a static
- * dropdown — built for lists that can't reasonably be loaded in full
- * (parks, trees, ...). `fetchOptions(query)` is called with the debounced
- * search text and must return an array of `{ id, label, sublabel? }`.
- */
 export default function SearchSelect({
   value,
   onChange,
@@ -17,20 +11,30 @@ export default function SearchSelect({
   disabled = false,
   emptyLabel = "No results",
 }) {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const containerRef = useRef(null);
+  const inputRef = useRef(null);
   const debouncedQuery = useDebouncedValue(query, 300);
 
+  // Only fire a backend search when the user has actually typed something
   useEffect(() => {
-    if (!open) return;
+    if (!debouncedQuery.trim()) {
+      setOptions([]);
+      setShowDropdown(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
+    setShowDropdown(true);
     fetchOptions(debouncedQuery)
       .then((results) => {
         if (!cancelled) setOptions(results);
+      })
+      .catch(() => {
+        if (!cancelled) setOptions([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -38,12 +42,13 @@ export default function SearchSelect({
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, open, fetchOptions]);
+  }, [debouncedQuery, fetchOptions]);
 
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false);
+        setShowDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -52,41 +57,64 @@ export default function SearchSelect({
 
   const handleSelect = (option) => {
     onChange(option);
-    setOpen(false);
     setQuery("");
+    setOptions([]);
+    setShowDropdown(false);
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange(null);
+    setQuery("");
+    setOptions([]);
+    setShowDropdown(false);
+    inputRef.current?.focus();
   };
 
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-2)] px-3.5 py-2.5 text-left text-sm text-[color:var(--mist)] outline-none transition-colors focus:border-[color:var(--moss)] disabled:cursor-not-allowed disabled:opacity-50"
+      <div
+        className={`flex items-center gap-2 rounded-xl border bg-[color:var(--canopy-2)] px-3.5 py-2.5 transition-colors ${
+          disabled
+            ? "cursor-not-allowed border-[color:var(--line)] opacity-50"
+            : "border-[color:var(--line-strong)] focus-within:border-[color:var(--moss)]"
+        }`}
       >
-        <span className={value ? "text-[color:var(--mist)]" : "text-[color:var(--mist-dim)]"}>
-          {value ? value.label : placeholder}
-        </span>
-        <div className="flex items-center gap-1.5">
+        <Search size={14} className="shrink-0 text-[color:var(--mist-dim)]" />
+
+        {/* Show selected value as a chip; otherwise show the text input */}
+        {value ? (
+          <span className="flex-1 truncate text-sm text-[color:var(--mist)]">{value.label}</span>
+        ) : (
+          <input
+            ref={inputRef}
+            disabled={disabled}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => {
+              if (query.trim() && options.length > 0) setShowDropdown(true);
+            }}
+            placeholder={placeholder}
+            className="w-full bg-transparent text-sm text-[color:var(--mist)] outline-none placeholder:text-[color:var(--mist-dim)] disabled:cursor-not-allowed"
+          />
+        )}
+
+        <div className="flex shrink-0 items-center gap-1">
+          {loading && <Loader2 size={13} className="animate-spin text-[color:var(--moss)]" />}
           {value && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(null);
-              }}
+            <button
+              type="button"
+              onClick={handleClear}
               className="rounded-full p-0.5 text-[color:var(--mist-dim)] hover:text-[color:var(--mist)]"
             >
               <X size={13} />
-            </span>
+            </button>
           )}
-          <ChevronDown size={15} className="text-[color:var(--mist-dim)]" />
         </div>
-      </button>
+      </div>
 
       <AnimatePresence>
-        {open && (
+        {showDropdown && (
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -94,18 +122,6 @@ export default function SearchSelect({
             transition={{ duration: 0.15 }}
             className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] shadow-2xl"
           >
-            <div className="flex items-center gap-2 border-b border-[color:var(--line)] px-3 py-2.5">
-              <Search size={14} className="shrink-0 text-[color:var(--mist-dim)]" />
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Type to search…"
-                className="w-full bg-transparent text-sm text-[color:var(--mist)] outline-none placeholder:text-[color:var(--mist-dim)]"
-              />
-              {loading && <Loader2 size={14} className="shrink-0 animate-spin text-[color:var(--moss)]" />}
-            </div>
-
             <div className="max-h-64 overflow-y-auto py-1">
               {!loading && options.length === 0 && (
                 <p className="px-3.5 py-3 text-sm text-[color:var(--mist-dim)]">{emptyLabel}</p>
