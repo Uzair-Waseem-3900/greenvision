@@ -23,9 +23,9 @@ export default function DashboardPage() {
       try {
         const [summaryRes, parksRes, treesRes, recentRes] = await Promise.all([
           aiApi.dashboardSummary(),
-          parksApi.list({ page: 1, page_size: 12 }),
+          parksApi.list({ page: 1, page_size: 5 }),
           treesApi.list({ page: 1, page_size: 1 }),
-          reportsApi.list({ sort_by: "created_at", sort_dir: "desc", page: 1, page_size: 5 }),
+          reportsApi.list({ sort_by: "created_at", sort_dir: "desc", page: 1, page_size: 2 }),
         ]);
         setSummary(summaryRes.data);
         setParks(parksRes.data.items);
@@ -42,7 +42,7 @@ export default function DashboardPage() {
 
   // Parks don't carry an aggregate health status from the API, so default
   // the badge to "healthy" until a per-park rollup endpoint exists.
-  const parksForList = parks.map((p) => ({
+  const parksForList = parks.slice(0, 5).map((p) => ({
     id: p.id,
     name: p.name,
     trees: p.tree_count ?? 0,
@@ -92,7 +92,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="space-y-3">
-                {recent.map((report) => (
+                {recent.slice(0, 2).map((report) => (
                   <ReportCard
                     key={report.id}
                     imageUrl={report.image_url}
