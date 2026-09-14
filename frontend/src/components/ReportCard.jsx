@@ -125,12 +125,12 @@ export default function ReportCard({
               )}
             </div>
 
-            {title && <p className="text-sm font-medium text-[color:var(--mist)]">{title}</p>}
+            {title && <p className="text-base font-medium text-[color:var(--mist)]">{title}</p>}
             {notes && (
-              <p className="line-clamp-2 text-xs leading-relaxed text-[color:var(--mist-dim)]">{notes}</p>
+              <p className="text-sm leading-relaxed text-[color:var(--mist-dim)]">{notes}</p>
             )}
             {actionTaken && (
-              <p className="text-xs text-[color:var(--sky)]">
+              <p className="text-sm text-[color:var(--sky)]">
                 <span className="font-medium">Action: </span>
                 {actionTaken}
               </p>
