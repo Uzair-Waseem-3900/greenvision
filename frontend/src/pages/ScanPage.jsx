@@ -85,7 +85,15 @@ export default function ScanPage() {
         </div>
       </div>
 
-      <ScanUploader treeId={selectedTree?.id || null} />
+      <ScanUploader
+        treeId={selectedTree?.id || null}
+        disabled={!selectedPark || !selectedTree}
+        disabledReason={
+          !selectedPark
+            ? "Select a park above to get started."
+            : "Select a tree to enable photo upload."
+        }
+      />
 
       <div className="mt-8 flex items-start gap-3 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-5">
         <Info size={17} className="mt-0.5 shrink-0 text-[color:var(--sky)]" />

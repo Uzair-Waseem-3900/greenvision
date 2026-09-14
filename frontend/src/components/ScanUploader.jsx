@@ -14,7 +14,7 @@ const STAGES = [
 
 const MIN_STAGE_MS = 700; // keeps the animation from flashing by too fast
 
-export default function ScanUploader({ treeId }) {
+export default function ScanUploader({ treeId, disabled = false, disabledReason = "" }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [stage, setStage] = useState(-1); // -1 idle, 0..3 processing, 4 done, 5 error
   const [result, setResult] = useState(null);
@@ -62,6 +62,7 @@ export default function ScanUploader({ treeId }) {
   );
 
   const handleFiles = (files) => {
+    if (disabled) return;
     const file = files?.[0];
     if (!file) return;
     if (file.type !== "image/webp") {
@@ -86,7 +87,7 @@ export default function ScanUploader({ treeId }) {
       <div
         onDragOver={(e) => {
           e.preventDefault();
-          setDragOver(true);
+          if (!disabled) setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
@@ -95,11 +96,24 @@ export default function ScanUploader({ treeId }) {
           handleFiles(e.dataTransfer.files);
         }}
         className={`relative flex min-h-[320px] flex-col items-center justify-center overflow-hidden rounded-3xl border transition-colors duration-300 sm:min-h-[420px] ${
-          dragOver
+          disabled
+            ? "border-[color:var(--line)] bg-[color:var(--canopy-2)]"
+            : dragOver
             ? "border-[color:var(--moss)] bg-[color:var(--canopy-3)]/40"
             : "border-[color:var(--line-strong)] bg-[color:var(--canopy-2)]"
         }`}
       >
+        {/* Disabled overlay */}
+        {disabled && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-3xl bg-[color:var(--canopy-2)]/80 backdrop-blur-[2px]">
+            <div className="flex flex-col items-center px-8 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--canopy-3)] text-[color:var(--mist-dim)]">
+                <UploadCloud size={22} />
+              </div>
+              <p className="text-sm font-medium text-[color:var(--mist-dim)]">{disabledReason}</p>
+            </div>
+          </div>
+        )}
         {!imageUrl && (
           <div className="flex flex-col items-center px-8 text-center">
             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--moss-deep)]/15 text-[color:var(--moss)]">
@@ -114,7 +128,8 @@ export default function ScanUploader({ treeId }) {
             </p>
             <button
               onClick={() => inputRef.current?.click()}
-              className="mt-6 rounded-full bg-[color:var(--moss)] px-5 py-2.5 text-sm font-semibold text-[#0b1a10] transition-transform duration-200 hover:scale-[1.04] active:scale-95"
+              disabled={disabled}
+              className="mt-6 rounded-full bg-[color:var(--moss)] px-5 py-2.5 text-sm font-semibold text-[#0b1a10] transition-transform duration-200 hover:scale-[1.04] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Choose a photo
             </button>
@@ -122,6 +137,7 @@ export default function ScanUploader({ treeId }) {
               ref={inputRef}
               type="file"
               accept=".webp,image/webp"
+              disabled={disabled}
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
