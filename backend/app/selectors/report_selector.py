@@ -9,16 +9,20 @@ from app.models.ai_analysis import AIAnalysis
 from app.models.park import Park
 from app.models.report import Report
 from app.models.tree import Tree
+from app.services import storage_service
 
 # Columns shared by every enriched report query — kept in one place so the
 # global reports list, the get-by-id detail view, and the reusable
 # ReportCard frontend component always see exactly the same shape.
+# NOTE: We fetch image_path (not image_url) because the stored signed URL
+# expires after SUPABASE_SIGNED_URL_EXPIRY_SECONDS. A fresh URL is generated
+# at response time via storage_service.get_signed_url().
 _ENRICHED_COLUMNS = (
     Report,
     Tree.label.label("tree_label"),
     Tree.park_id.label("park_id"),
     Park.name.label("park_name"),
-    AIAnalysis.image_url.label("image_url"),
+    AIAnalysis.image_path.label("image_path"),
     AIAnalysis.confidence.label("confidence"),
 )
 
@@ -33,13 +37,20 @@ def _enriched_base_query():
 
 
 def _row_to_enriched_dict(row) -> dict:
-    report, tree_label, park_id, park_name, image_url, confidence = row
+    report, tree_label, park_id, park_name, image_path, confidence = row
+    # Re-generate a fresh signed URL so the image is never broken due to expiry.
+    fresh_url: str | None = None
+    if image_path:
+        try:
+            fresh_url = storage_service.get_signed_url(image_path)
+        except Exception:  # noqa: BLE001 - don't break the whole response if re-signing fails
+            fresh_url = None
     return {
         **{c.name: getattr(report, c.name) for c in Report.__table__.columns},
         "tree_label": tree_label,
         "park_id": park_id,
         "park_name": park_name,
-        "image_url": image_url,
+        "image_url": fresh_url,
         "confidence": confidence,
     }
 
@@ -205,7 +216,7 @@ async def list_latest_reports_by_park(
             latest.c.severity,
             latest.c.status,
             latest.c.created_at.label("scanned_at"),
-            AIAnalysis.image_url,
+            AIAnalysis.image_path,
             AIAnalysis.confidence,
         )
         .select_from(Tree)
@@ -234,5 +245,15 @@ async def list_latest_reports_by_park(
     rows_result = await db.execute(query)
     total_result = await db.execute(count_query)
 
-    items = [dict(row._mapping) for row in rows_result.all()]
-    return items, total_result.scalar_one()
+    rows = [dict(row._mapping) for row in rows_result.all()]
+    # Re-sign URLs so photos never break due to expiry.
+    for row in rows:
+        path = row.pop("image_path", None)
+        if path:
+            try:
+                row["image_url"] = storage_service.get_signed_url(path)
+            except Exception:  # noqa: BLE001
+                row["image_url"] = None
+        else:
+            row["image_url"] = None
+    return rows, total_result.scalar_one()

@@ -40,6 +40,23 @@ def _validate_image(content_type: str, file_bytes: bytes) -> None:
         raise ValidationAppError(f"Image exceeds the {settings.MAX_UPLOAD_SIZE_MB}MB limit")
 
 
+def get_signed_url(object_path: str) -> str:
+    """
+    Generates a fresh signed URL for an already-uploaded image path.
+    Call this whenever you need to surface an image URL in the API response
+    so you never return a stale/expired URL that was saved to the DB.
+    """
+    client = get_supabase_client()
+    bucket = client.storage.from_(settings.SUPABASE_STORAGE_BUCKET)
+    try:
+        signed = bucket.create_signed_url(
+            object_path, settings.SUPABASE_SIGNED_URL_EXPIRY_SECONDS
+        )
+        return signed.get("signedURL") or signed.get("signed_url")
+    except Exception as exc:  # noqa: BLE001
+        raise UpstreamServiceError(f"Failed to generate signed URL: {exc}") from exc
+
+
 def upload_tree_photo(file_bytes: bytes, content_type: str, tree_id: uuid.UUID) -> tuple[str, str]:
     """
     Uploads a photo to the Supabase Storage bucket and returns
@@ -58,10 +75,7 @@ def upload_tree_photo(file_bytes: bytes, content_type: str, tree_id: uuid.UUID) 
             file_bytes,
             {"content-type": "image/webp"},
         )
-        signed = bucket.create_signed_url(
-            object_path, settings.SUPABASE_SIGNED_URL_EXPIRY_SECONDS
-        )
-        signed_url = signed.get("signedURL") or signed.get("signed_url")
+        signed_url = get_signed_url(object_path)
     except Exception as exc:  # noqa: BLE001 - external SDK, translate broadly
         raise UpstreamServiceError(f"Failed to upload image to storage: {exc}") from exc
 
