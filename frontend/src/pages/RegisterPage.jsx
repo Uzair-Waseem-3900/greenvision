@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { Leaf, UserPlus } from "lucide-react";
+import { Leaf, UserPlus, Eye, EyeOff, Check, AlertCircle } from "lucide-react";
 import { useAuth, getErrorMessage } from "../context/AuthContext";
+import PasswordStrengthMeter from "../components/PasswordStrengthMeter";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -10,6 +11,9 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -22,8 +26,14 @@ export default function RegisterPage() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // Send ONLY fullName, email, and password to backend
       await register(fullName, email, password);
       navigate("/dashboard", { replace: true });
     } catch (err) {
@@ -32,6 +42,9 @@ export default function RegisterPage() {
       setSubmitting(false);
     }
   };
+
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   return (
     <div className="canopy-field flex min-h-[calc(100vh-73px)] items-center justify-center px-4 py-16">
@@ -80,19 +93,73 @@ export default function RegisterPage() {
               placeholder="you@example.com"
             />
           </div>
+
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[color:var(--mist-dim)]">
               Password
             </label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] px-3.5 py-2.5 text-sm text-[color:var(--mist)] outline-none transition-colors focus:border-[color:var(--moss)]"
-              placeholder="At least 8 characters"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-[color:var(--line-strong)] bg-[color:var(--canopy-1)] px-3.5 py-2.5 pr-10 text-sm text-[color:var(--mist)] outline-none transition-colors focus:border-[color:var(--moss)]"
+                placeholder="At least 8 characters"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--mist-dim)] hover:text-[color:var(--mist)] transition-colors focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            
+            {/* Animated Password Strength Bar */}
+            <PasswordStrengthMeter password={password} />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-[color:var(--mist-dim)]">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={`w-full rounded-xl border bg-[color:var(--canopy-1)] px-3.5 py-2.5 pr-10 text-sm text-[color:var(--mist)] outline-none transition-colors focus:border-[color:var(--moss)] ${
+                  passwordsMismatch
+                    ? "border-[color:var(--clay)]"
+                    : passwordsMatch
+                    ? "border-[color:var(--moss)]"
+                    : "border-[color:var(--line-strong)]"
+                }`}
+                placeholder="Re-enter your password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--mist-dim)] hover:text-[color:var(--mist)] transition-colors focus:outline-none"
+                aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {passwordsMismatch && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[color:var(--clay)]">
+                <AlertCircle size={12} /> Passwords do not match
+              </p>
+            )}
+            {passwordsMatch && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-[color:var(--moss)]">
+                <Check size={12} /> Passwords match
+              </p>
+            )}
           </div>
 
           {error && (
@@ -121,3 +188,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+
