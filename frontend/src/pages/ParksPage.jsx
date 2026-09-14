@@ -359,18 +359,19 @@ export default function ParksPage() {
         </button>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {showParkForm && (
           <motion.div
-            initial={{ opacity: 0, height: 0, y: -8 }}
-            animate={{ opacity: 1, height: "auto", y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -8 }}
+            key="park-form"
+            initial={{ opacity: 0, scaleY: 0.92, y: -6 }}
+            animate={{ opacity: 1, scaleY: 1, y: 0 }}
+            exit={{ opacity: 0, scaleY: 0.92, y: -6 }}
             transition={{
-              height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
-              opacity: { duration: 0.2, ease: "easeOut" },
-              y: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+              duration: 0.28,
+              ease: [0.22, 1, 0.36, 1],
             }}
-            className="mb-8 overflow-hidden rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-5 will-change-[height,opacity,transform]"
+            style={{ transformOrigin: "top" }}
+            className="mb-8 rounded-2xl border border-[color:var(--line)] bg-[color:var(--canopy-2)] p-5 will-change-transform"
           >
             <h2 className="mb-3 font-display text-lg text-[color:var(--mist)]">Add a park</h2>
             <ParkForm
