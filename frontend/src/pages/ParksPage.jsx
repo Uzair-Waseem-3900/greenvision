@@ -230,6 +230,8 @@ function TreeEditForm({ tree, onSaved, onCancel }) {
 export default function ParksPage() {
   const [parks, setParks] = useState([]);
   const [treesByPark, setTreesByPark] = useState({});
+  const [treesLoadingByPark, setTreesLoadingByPark] = useState({});
+  const [treeErrorsByPark, setTreeErrorsByPark] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [addingTreeFor, setAddingTreeFor] = useState(null);
   const [editingPark, setEditingPark] = useState(null);
@@ -263,11 +265,18 @@ export default function ParksPage() {
     }
     setExpanded(parkId);
     if (!treesByPark[parkId]) {
+      setTreesLoadingByPark((prev) => ({ ...prev, [parkId]: true }));
+      setTreeErrorsByPark((prev) => ({ ...prev, [parkId]: "" }));
       try {
         const res = await treesApi.list({ park_id: parkId, page: 1, page_size: 50 });
         setTreesByPark((prev) => ({ ...prev, [parkId]: res.data.items }));
-      } catch {
-        setTreesByPark((prev) => ({ ...prev, [parkId]: [] }));
+      } catch (err) {
+        setTreeErrorsByPark((prev) => ({
+          ...prev,
+          [parkId]: getErrorMessage(err, "Could not load this park's trees."),
+        }));
+      } finally {
+        setTreesLoadingByPark((prev) => ({ ...prev, [parkId]: false }));
       }
     }
   };
@@ -401,7 +410,16 @@ export default function ParksPage() {
                   className="overflow-hidden border-t border-[color:var(--line)]"
                 >
                   <div className="space-y-2 p-5">
-                    {(treesByPark[park.id] || []).map((tree) =>
+                    {treesLoadingByPark[park.id] && (
+                      <p className="text-xs text-[color:var(--mist-dim)]">Loading trees…</p>
+                    )}
+
+                    {treeErrorsByPark[park.id] && (
+                      <p className="text-xs text-[color:var(--clay)]">{treeErrorsByPark[park.id]}</p>
+                    )}
+
+                    {!treesLoadingByPark[park.id] && !treeErrorsByPark[park.id] &&
+                      (treesByPark[park.id] || []).map((tree) =>
                       editingTree === tree.id ? (
                         <TreeEditForm
                           key={tree.id}
@@ -444,9 +462,10 @@ export default function ParksPage() {
                           </div>
                         </div>
                       )
-                    )}
+                      )}
 
-                    {(treesByPark[park.id] || []).length === 0 && (
+                    {!treesLoadingByPark[park.id] && !treeErrorsByPark[park.id] &&
+                      treesByPark[park.id] && treesByPark[park.id].length === 0 && (
                       <p className="text-xs text-[color:var(--mist-dim)]">No trees added yet.</p>
                     )}
 
